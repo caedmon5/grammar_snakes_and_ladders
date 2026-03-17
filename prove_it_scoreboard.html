@@ -76,12 +76,40 @@
   }
   .turn-counter strong { color: #e8c547; font-size: 18px; }
 
-  /* ── Reference chips ── */
+  /* ── Reference chips (now clickable) ── */
   .ref-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
   .ref-chip {
-    padding: 6px 14px; border-radius: 8px; border: 1px solid #444;
-    background: rgba(255,255,255,0.04); font-size: 14px; color: #bbb;
+    padding: 10px 18px; border-radius: 8px; border: 2px solid #444;
+    background: rgba(255,255,255,0.04); font-size: 16px; color: #bbb;
+    cursor: pointer; transition: all 0.15s; font-weight: 600;
   }
+  .ref-chip:hover { border-color: #e8c547; background: rgba(232,197,71,0.08); color: #eee; }
+
+  /* ── Identify feedback ── */
+  .identify-feedback {
+    padding: 16px 20px; border-radius: 10px; margin-bottom: 16px;
+    font-size: 18px; font-weight: 600;
+  }
+  .identify-feedback.correct { background: rgba(29,158,117,0.15); border: 1px solid #1d9e75; color: #4cd9a0; }
+  .identify-feedback.incorrect { background: rgba(192,57,43,0.15); border: 1px solid #c0392b; color: #e88; }
+  .override-btn {
+    padding: 8px 18px; border-radius: 8px; border: 1px solid #555;
+    background: rgba(255,255,255,0.06); color: #999; cursor: pointer;
+    font-size: 13px; transition: all 0.2s; margin-top: 12px;
+  }
+  .override-btn:hover { background: rgba(255,255,255,0.12); color: #ccc; border-color: #888; }
+
+  /* ── Committed answers status bar ── */
+  .committed-answers { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .committed-chip {
+    padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .committed-chip .chip-label { color: #888; font-weight: 400; }
+  .committed-chip.phrase-type { background: rgba(55,138,221,0.12); border: 1px solid rgba(55,138,221,0.4); color: #6ab0f3; }
+  .committed-chip.function { background: rgba(213,83,126,0.12); border: 1px solid rgba(213,83,126,0.4); color: #e88aaf; }
+  .committed-chip.overridden { font-style: italic; opacity: 0.8; }
+  .committed-chip.overridden::after { content: " (override)"; font-size: 11px; color: #999; font-style: italic; }
 
   /* ── Action buttons ── */
   .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
@@ -300,6 +328,15 @@ function newGroupState(i) {
     testsUsed: [],
     bracketInput: "",
     sentenceIdx: null,
+    lastAnswer: null,
+    lastAnswerCorrect: null,
+    proveOutcome: null,
+    proveClaimed: false,
+    proveHistory: [],
+    committedPhraseType: null,
+    committedPhraseTypeOverride: false,
+    committedFunction: null,
+    committedFunctionOverride: false,
     completed: false,
   };
 }
@@ -533,6 +570,8 @@ function renderStage() {
     '</div>' +
     '<div class="turn-counter">Turns: <strong>' + g.turns + '</strong></div>';
 
+  html += renderCommittedAnswers(g);
+
   // Sentence card display
   if (g.sentenceIdx !== null) {
     const s = SENTENCES[g.sentenceIdx];
@@ -568,28 +607,73 @@ function renderStage() {
   }
 }
 
+/* ── Committed answers status ── */
+function renderCommittedAnswers(g) {
+  let html = '<div class="committed-answers">';
+  if (g.committedPhraseType) {
+    html += '<div class="committed-chip phrase-type' + (g.committedPhraseTypeOverride ? ' overridden' : '') + '">' +
+      '<span class="chip-label">Phrase Type:</span> ' + g.committedPhraseType + '</div>';
+  }
+  if (g.committedFunction) {
+    html += '<div class="committed-chip function' + (g.committedFunctionOverride ? ' overridden' : '') + '">' +
+      '<span class="chip-label">Function:</span> ' + g.committedFunction + '</div>';
+  }
+  html += '</div>';
+  // Only return if there's something to show
+  return (g.committedPhraseType || g.committedFunction) ? html : '';
+}
+
 /* ── Identify stage ── */
 function renderIdentifyStage(g) {
-  const chips = g.stageIndex === 0 ? PHRASE_TYPES : FUNCTIONS;
-  const chipLabel = g.stageIndex === 0 ? "Phrase types" : "Syntactic functions";
+  const isPhrase = g.stageIndex === 0;
+  const chips = isPhrase ? PHRASE_TYPES : FUNCTIONS;
+  const chipLabel = isPhrase ? "What phrase type is it?" : "What syntactic function does it have?";
+
   let html = '<div class="stage-subtitle">' +
-    (g.stageIndex === 0
+    (isPhrase
       ? "The group identifies the phrase type of the underlined phrase."
       : "The group identifies the syntactic function of the phrase.") +
     '</div>';
-  html += '<div style="font-size:13px;color:#777;margin:12px 0 6px;">' + chipLabel + ':</div>';
+
+  // Show feedback if an answer was just given
+  if (g.lastAnswer !== undefined && g.lastAnswer !== null) {
+    const s = SENTENCES[g.sentenceIdx];
+    const correctAnswer = isPhrase ? s.phraseType : s.function;
+    const isCorrect = g.lastAnswerCorrect;
+    if (isCorrect) {
+      html += '<div class="identify-feedback correct">Correct! The answer is ' + correctAnswer + '.</div>';
+      html += '<div class="actions"><button class="act-btn btn-correct" onclick="advanceStage()">Proceed</button></div>';
+      html += '<button class="override-btn" onclick="overrideIncorrect()">Override: mark as incorrect (card error)</button>';
+      return html;
+    } else {
+      html += '<div class="identify-feedback incorrect">Incorrect — you chose "' +
+        g.lastAnswer + '". The expected answer is ' + correctAnswer + '. Lost a turn.</div>';
+      html += '<div class="actions"><button class="act-btn btn-incorrect" onclick="clearAnswer()">Try Again</button></div>';
+      html += '<button class="override-btn" onclick="overrideCorrect()">Override: accept answer as correct (card error)</button>';
+      return html;
+    }
+  }
+
+  html += '<div style="font-size:14px;color:#999;margin:14px 0 8px;">' + chipLabel + '</div>';
   html += '<div class="ref-chips">';
-  chips.forEach(ch => { html += '<div class="ref-chip">' + ch + '</div>'; });
+  chips.forEach(ch => {
+    html += '<div class="ref-chip" onclick="submitIdentify(\'' + ch.replace(/'/g, "\\'") + '\')">' + ch + '</div>';
+  });
   html += '</div>';
-  html += '<div class="actions">' +
-    '<button class="act-btn btn-correct" onclick="stageCorrect()">Correct</button>' +
-    '<button class="act-btn btn-incorrect" onclick="stageIncorrect()">Incorrect</button>' +
-    '</div>';
   return html;
 }
 
 /* ── Prove stage ── */
+const PROVE_OUTCOMES = [
+  { key: "not-applicable", label: "Not Applicable", color: "#666" },
+  { key: "positive",       label: "Positive",       color: "#1d9e75" },
+  { key: "negative",       label: "Negative",       color: "#c0392b" },
+];
+
 function renderProveStage(g) {
+  // Initialise prove history if missing
+  if (!g.proveHistory) g.proveHistory = [];
+
   // Assign test if needed
   if (g.currentTestIdx === null) {
     assignRandomTest(g);
@@ -599,11 +683,47 @@ function renderProveStage(g) {
   const test = TESTS[g.currentTestIdx];
   const usedCount = g.testsUsed.length;
 
+  const isProvePhrase = g.stageIndex === 1;
+  const claimLabel = isProvePhrase ? g.committedPhraseType : g.committedFunction;
   let html = '<div class="stage-subtitle">' +
-    (g.stageIndex === 1
+    (isProvePhrase
       ? "Apply the assigned test to prove the phrase type."
       : "Apply the assigned test to prove the syntactic function.") +
     '</div>';
+  if (claimLabel) {
+    html += '<div style="margin:8px 0 14px;padding:10px 16px;border-radius:8px;' +
+      'background:rgba(232,197,71,0.08);border:1px solid rgba(232,197,71,0.3);' +
+      'font-size:15px;color:#e8c547;">' +
+      (isProvePhrase
+        ? 'You need to prove this is <strong>' + claimLabel + '</strong> — not just that it\'s a phrase.'
+        : 'You need to prove the function is <strong>' + claimLabel + '</strong> — not just identify the phrase type.') +
+      '</div>';
+  }
+
+  // Show history of tests so far this stage
+  if (g.proveHistory.length > 0) {
+    html += '<div style="margin-bottom:12px;">';
+    html += '<div style="font-size:12px;color:#666;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Evidence so far</div>';
+    g.proveHistory.forEach(h => {
+      const color = h.result === "positive" ? "#1d9e75" : h.result === "negative" ? "#c0392b" : "#666";
+      const symbol = h.result === "positive" ? "+" : h.result === "negative" ? "−" : "○";
+      html += '<div style="font-size:13px;color:' + color + ';padding:2px 0;">' + symbol + ' ' + h.testName + '</div>';
+    });
+    html += '</div>';
+  }
+
+  // If students claimed "proven" — show confirmation for instructor
+  if (g.proveClaimed) {
+    html += '<div class="test-card" style="border-color:#e8c547;background:rgba(232,197,71,0.08);">' +
+      '<h3 style="color:#e8c547;">Group claims: Proven!</h3>' +
+      '<div class="test-desc" style="color:#bbb;">They believe they have enough evidence. Do you agree?</div>' +
+      '</div>';
+    html += '<div class="actions">' +
+      '<button class="act-btn btn-correct" onclick="proveAcceptClaim()">Accept — Proceed</button>' +
+      '<button class="act-btn btn-incorrect" onclick="proveRejectClaim()">Reject — Need More Evidence</button>' +
+      '</div>';
+    return html;
+  }
 
   html += '<div class="test-card">' +
     '<h3>' + test.name + '</h3>' +
@@ -613,11 +733,39 @@ function renderProveStage(g) {
 
   html += '<div class="tests-used">Tests used this stage: ' + usedCount + ' / ' + TESTS.length + '</div>';
 
-  html += '<div class="actions">' +
-    '<button class="act-btn btn-correct" onclick="proveProven()">Proven</button>' +
-    '<button class="act-btn btn-tryagain" onclick="proveTryAnother()">Try Another Test</button>' +
-    '<button class="act-btn btn-incorrect" onclick="proveIncorrect()">Incorrect</button>' +
-    '</div>';
+  // Show feedback if outcome was just chosen
+  if (g.proveOutcome !== null && g.proveOutcome !== undefined) {
+    if (g.proveOutcome === "positive") {
+      html += '<div class="identify-feedback correct">Positive result.</div>';
+      html += '<div class="actions">' +
+        '<button class="act-btn btn-correct" onclick="proveClaimDone()">We\'ve Proven It</button>' +
+        '<button class="act-btn btn-tryagain" style="background:#d4880f;" onclick="proveNextTest()">Draw Another Test</button>' +
+        '</div>';
+      html += '<button class="override-btn" onclick="proveUndoOutcome()">Undo: change this outcome</button>';
+    } else if (g.proveOutcome === "negative") {
+      html += '<div class="identify-feedback incorrect">Negative result — lost a turn.</div>';
+      html += '<div class="actions">' +
+        '<button class="act-btn btn-correct" onclick="proveClaimDone()">We\'ve Proven It Anyway</button>' +
+        '<button class="act-btn btn-tryagain" style="background:#d4880f;" onclick="proveNextTest()">Draw Another Test</button>' +
+        '</div>';
+      html += '<button class="override-btn" onclick="proveUndoOutcome()">Undo: change this outcome</button>';
+    } else if (g.proveOutcome === "not-applicable") {
+      html += '<div class="identify-feedback" style="background:rgba(255,255,255,0.06);border:1px solid #555;color:#aaa;">Test not applicable — draw another.</div>';
+      html += '<div class="actions">' +
+        '<button class="act-btn btn-tryagain" style="background:#666;" onclick="proveNextTestFree()">Draw Another Test (no turn cost)</button>' +
+        '</div>';
+      html += '<button class="override-btn" onclick="proveUndoOutcome()">Undo: change this outcome</button>';
+    }
+    return html;
+  }
+
+  // Outcome buttons
+  html += '<div style="font-size:14px;color:#999;margin:14px 0 8px;">What was the result of this test?</div>';
+  html += '<div class="ref-chips">';
+  PROVE_OUTCOMES.forEach(o => {
+    html += '<div class="ref-chip" style="border-color:' + o.color + ';color:' + o.color + ';" onclick="submitProveOutcome(\'' + o.key + '\')">' + o.label + '</div>';
+  });
+  html += '</div>';
   return html;
 }
 
@@ -659,6 +807,11 @@ function advanceStage() {
   g.currentTestIdx = null;
   g.testsUsed = [];
   g.bracketInput = "";
+  g.lastAnswer = null;
+  g.lastAnswerCorrect = null;
+  g.proveOutcome = null;
+  g.proveClaimed = false;
+  g.proveHistory = [];
   if (g.stageIndex < 4) {
     g.stageIndex++;
   } else {
@@ -667,32 +820,125 @@ function advanceStage() {
   render();
 }
 
-function stageCorrect() {
-  activeGroup().turns++;
-  advanceStage();
-}
+function submitIdentify(answer) {
+  const g = activeGroup();
+  const s = SENTENCES[g.sentenceIdx];
+  const isPhrase = g.stageIndex === 0;
+  const correctAnswer = isPhrase ? s.phraseType : s.function;
+  const isCorrect = answer === correctAnswer;
 
-function stageIncorrect() {
-  activeGroup().turns++;
+  g.turns++;
+  g.lastAnswer = answer;
+  g.lastAnswerCorrect = isCorrect;
+
+  // Commit the answer when correct (Proceed still required to advance)
+  if (isCorrect) {
+    if (isPhrase) {
+      g.committedPhraseType = answer;
+      g.committedPhraseTypeOverride = false;
+    } else {
+      g.committedFunction = answer;
+      g.committedFunctionOverride = false;
+    }
+  }
   render();
 }
 
-function proveProven() {
-  activeGroup().turns++;
+function overrideCorrect() {
+  // Card was wrong — accept the student's answer and advance
+  const g = activeGroup();
+  const isPhrase = g.stageIndex === 0;
+  if (isPhrase) {
+    g.committedPhraseType = g.lastAnswer;
+    g.committedPhraseTypeOverride = true;
+  } else {
+    g.committedFunction = g.lastAnswer;
+    g.committedFunctionOverride = true;
+  }
+  g.lastAnswer = null;
+  g.lastAnswerCorrect = null;
   advanceStage();
 }
 
-function proveTryAnother() {
+function overrideIncorrect() {
+  // Card was wrong — the "correct" result was actually wrong, count as lost turn
+  const g = activeGroup();
+  g.lastAnswer = null;
+  g.lastAnswerCorrect = null;
+  render(); // stay on same stage, let them try again
+}
+
+function clearAnswer() {
+  // After an incorrect answer, go back to the chip selection
+  const g = activeGroup();
+  g.lastAnswer = null;
+  g.lastAnswerCorrect = null;
+  render();
+}
+
+function submitProveOutcome(key) {
+  const g = activeGroup();
+  if (!g.proveHistory) g.proveHistory = [];
+  const test = TESTS[g.currentTestIdx];
+  // "not-applicable" doesn't cost a turn; everything else does
+  if (key !== "not-applicable") g.turns++;
+  g.proveOutcome = key;
+  g.proveHistory.push({ testName: test.name, result: key });
+  render();
+}
+
+function proveClaimDone() {
+  // Students claim they have enough evidence
+  const g = activeGroup();
+  g.proveClaimed = true;
+  g.proveOutcome = null;
+  render();
+}
+
+function proveAcceptClaim() {
+  // Instructor agrees — advance
+  const g = activeGroup();
+  g.proveClaimed = false;
+  advanceStage();
+}
+
+function proveRejectClaim() {
+  // Instructor disagrees — costs a turn, keep going
   const g = activeGroup();
   g.turns++;
+  g.proveClaimed = false;
+  g.proveOutcome = null;
   assignRandomTest(g);
   render();
 }
 
-function proveIncorrect() {
+function proveNextTest() {
+  // Draw another test (turn already counted)
   const g = activeGroup();
-  g.turns++;
-  render(); // same test stays
+  g.proveOutcome = null;
+  assignRandomTest(g);
+  render();
+}
+
+function proveNextTestFree() {
+  // Draw another test after not-applicable (no turn cost)
+  const g = activeGroup();
+  g.proveOutcome = null;
+  assignRandomTest(g);
+  render();
+}
+
+function proveUndoOutcome() {
+  // Undo the last outcome — reverse turn cost and history entry
+  const g = activeGroup();
+  if (g.proveOutcome && g.proveOutcome !== "not-applicable") {
+    g.turns--; // refund the turn
+  }
+  if (g.proveHistory && g.proveHistory.length > 0) {
+    g.proveHistory.pop();
+  }
+  g.proveOutcome = null;
+  render();
 }
 
 function treeApprove() {
