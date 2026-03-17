@@ -179,6 +179,29 @@
   .summit-panel h2 { font-size: 36px; color: #e8c547; margin-bottom: 8px; }
   .summit-panel .summit-turns { font-size: 22px; color: #aaa; }
 
+  /* ── Review mode ── */
+  .review-nav { display: flex; gap: 8px; justify-content: center; margin: 24px 0 16px; flex-wrap: wrap; }
+  .review-nav-btn {
+    padding: 8px 16px; border-radius: 8px; border: 1px solid #444;
+    background: rgba(255,255,255,0.06); color: #aaa; cursor: pointer;
+    font-size: 13px; font-weight: 600; transition: all 0.2s;
+  }
+  .review-nav-btn:hover { background: rgba(255,255,255,0.12); color: #eee; }
+  .review-nav-btn.active-review { border-color: #e8c547; color: #e8c547; background: rgba(232,197,71,0.1); }
+  .review-section {
+    text-align: left; padding: 20px 24px; border-radius: 12px;
+    background: rgba(255,255,255,0.04); border: 1px solid #333; margin-top: 12px;
+  }
+  .review-section h3 { font-size: 18px; color: #e8c547; margin-bottom: 10px; }
+  .review-item { font-size: 15px; color: #ccc; padding: 4px 0; }
+  .review-item .review-label { color: #888; }
+  .review-back-btn {
+    margin-top: 20px; padding: 8px 20px; border-radius: 8px; border: 1px solid #444;
+    background: rgba(255,255,255,0.06); color: #ccc; cursor: pointer;
+    font-size: 14px; transition: all 0.2s;
+  }
+  .review-back-btn:hover { background: rgba(255,255,255,0.12); }
+
   /* ── Leaderboard overlay ── */
   .lb-overlay {
     position: fixed; inset: 0; background: rgba(0,0,0,0.7);
@@ -347,6 +370,9 @@ function newGroupState(i) {
     committedPhraseTypeOverride: false,
     committedFunction: null,
     committedFunctionOverride: false,
+    provePhraseFinalHistory: [],
+    proveFuncFinalHistory: [],
+    reviewStage: null,
     completed: false,
   };
 }
@@ -576,10 +602,32 @@ function renderStage() {
   const g = state.groups[state.activeGroupIndex];
 
   if (g.completed) {
-    c.innerHTML = '<div class="summit-panel">' +
+    let html = '<div class="summit-panel">' +
       '<h2>Summit Reached!</h2>' +
-      '<div class="summit-turns">' + g.name + ' finished in <strong>' + g.turns + '</strong> turns</div>' +
-      '</div>';
+      '<div class="summit-turns">' + g.name + ' finished in <strong>' + g.turns + '</strong> turns</div>';
+
+    // Review navigation
+    html += '<div class="review-nav">';
+    STAGES.forEach((st, si) => {
+      const isActive = g.reviewStage === si;
+      html += '<button class="review-nav-btn' + (isActive ? ' active-review' : '') +
+        '" onclick="setReviewStage(' + si + ')">' + st.label + '</button>';
+    });
+    html += '<button class="review-nav-btn" onclick="clearReviewStage()">Summary</button>';
+    html += '</div>';
+
+    // Review content
+    if (g.reviewStage !== undefined && g.reviewStage !== null) {
+      html += renderReviewStage(g, g.reviewStage);
+    }
+
+    html += '</div>';
+    c.innerHTML = html;
+
+    // If reviewing tree stage, redraw
+    if (g.reviewStage === 4 && g.bracketInput) {
+      drawTree(g.bracketInput);
+    }
     return;
   }
 
@@ -828,6 +876,13 @@ function advanceStage() {
   g.currentTestIdx = null;
   g.testsUsed = [];
   g.bracketInput = "";
+  // Preserve prove history before clearing
+  if (g.stageIndex === 1 && g.proveHistory && g.proveHistory.length > 0) {
+    g.provePhraseFinalHistory = g.proveHistory.slice();
+  }
+  if (g.stageIndex === 3 && g.proveHistory && g.proveHistory.length > 0) {
+    g.proveFuncFinalHistory = g.proveHistory.slice();
+  }
   g.lastAnswer = null;
   g.lastAnswerCorrect = null;
   g.proveOutcome = null;
@@ -1147,6 +1202,88 @@ function drawTree(input) {
   }
 
   drawNode(tree);
+}
+
+/* ════════════════════════════════════════
+   Review mode
+   ════════════════════════════════════════ */
+function setReviewStage(si) {
+  const g = activeGroup();
+  g.reviewStage = si;
+  render();
+}
+
+function clearReviewStage() {
+  const g = activeGroup();
+  g.reviewStage = null;
+  render();
+}
+
+function renderReviewStage(g, si) {
+  const stage = STAGES[si];
+  const s = g.sentenceIdx !== null ? SENTENCES[g.sentenceIdx] : null;
+  let html = '<div class="review-section">';
+  html += '<h3>' + stage.label + ': ' + stage.title + '</h3>';
+
+  if (s) {
+    html += '<div class="review-item"><span class="review-label">Sentence:</span> ' + s.sentence + '</div>';
+    html += '<div class="review-item"><span class="review-label">Phrase:</span> ' + s.phrase + '</div>';
+  }
+
+  if (si === 0) {
+    // Identify phrase type
+    html += '<div class="review-item"><span class="review-label">Committed answer:</span> ' +
+      (g.committedPhraseType || '—') +
+      (g.committedPhraseTypeOverride ? ' <em style="color:#999;">(override)</em>' : '') + '</div>';
+    if (s) {
+      html += '<div class="review-item"><span class="review-label">Card answer:</span> ' + s.phraseType + '</div>';
+    }
+  } else if (si === 1) {
+    // Prove phrase type
+    html += '<div class="review-item"><span class="review-label">Proving:</span> ' +
+      (g.committedPhraseType || '—') + '</div>';
+    if (g.provePhraseFinalHistory && g.provePhraseFinalHistory.length > 0) {
+      html += '<div class="review-item"><span class="review-label">Evidence:</span></div>';
+      g.provePhraseFinalHistory.forEach(h => {
+        const color = h.result === "positive" ? "#1d9e75" : h.result === "negative" ? "#c0392b" : "#666";
+        const symbol = h.result === "positive" ? "+" : h.result === "negative" ? "−" : "○";
+        html += '<div style="font-size:14px;color:' + color + ';padding:2px 0 2px 16px;">' + symbol + ' ' + h.testName + '</div>';
+      });
+    }
+  } else if (si === 2) {
+    // Identify function
+    html += '<div class="review-item"><span class="review-label">Committed answer:</span> ' +
+      (g.committedFunction || '—') +
+      (g.committedFunctionOverride ? ' <em style="color:#999;">(override)</em>' : '') + '</div>';
+    if (s) {
+      html += '<div class="review-item"><span class="review-label">Card answer:</span> ' + s.function + '</div>';
+    }
+  } else if (si === 3) {
+    // Prove function
+    html += '<div class="review-item"><span class="review-label">Proving:</span> ' +
+      (g.committedFunction || '—') + '</div>';
+    if (g.proveFuncFinalHistory && g.proveFuncFinalHistory.length > 0) {
+      html += '<div class="review-item"><span class="review-label">Evidence:</span></div>';
+      g.proveFuncFinalHistory.forEach(h => {
+        const color = h.result === "positive" ? "#1d9e75" : h.result === "negative" ? "#c0392b" : "#666";
+        const symbol = h.result === "positive" ? "+" : h.result === "negative" ? "−" : "○";
+        html += '<div style="font-size:14px;color:' + color + ';padding:2px 0 2px 16px;">' + symbol + ' ' + h.testName + '</div>';
+      });
+    }
+  } else if (si === 4) {
+    // Tree
+    if (g.bracketInput) {
+      html += '<div class="review-item"><span class="review-label">Bracket notation:</span></div>';
+      html += '<div style="font-family:monospace;font-size:14px;color:#eee;background:#111;padding:10px;border-radius:6px;margin:8px 0;">' +
+        g.bracketInput.replace(/</g, '&lt;') + '</div>';
+      html += '<div class="canvas-wrap"><canvas id="treeCanvas" width="600" height="200"></canvas></div>';
+    } else {
+      html += '<div class="review-item" style="color:#666;font-style:italic;">No tree was entered.</div>';
+    }
+  }
+
+  html += '</div>';
+  return html;
 }
 
 /* ════════════════════════════════════════
