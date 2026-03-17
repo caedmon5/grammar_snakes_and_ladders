@@ -147,7 +147,7 @@
   .tree-input-area textarea:focus { outline: none; border-color: #e8c547; }
   .canvas-wrap {
     border: 1px solid #333; border-radius: 8px; background: #fff;
-    overflow: auto; max-height: 340px; min-height: 120px;
+    overflow: auto; min-height: 120px;
   }
   .canvas-wrap canvas { display: block; }
   .parse-error { color: #e74c3c; font-size: 13px; margin-top: 4px; min-height: 18px; }
@@ -825,7 +825,8 @@ function submitIdentify(answer) {
   const s = SENTENCES[g.sentenceIdx];
   const isPhrase = g.stageIndex === 0;
   const correctAnswer = isPhrase ? s.phraseType : s.function;
-  const isCorrect = answer === correctAnswer;
+  // Normalize: "Complement" matches "Complement (inside NP)", etc.
+  const isCorrect = answer === correctAnswer || correctAnswer.startsWith(answer + " (");
 
   g.turns++;
   g.lastAnswer = answer;
@@ -1008,6 +1009,21 @@ function parseBrackets(input) {
     return null;
   }
 
+  // If input has no brackets, treat as a sequence of words
+  if (!src.includes('[')) {
+    const words = src.split(/\s+/).filter(w => w.length > 0);
+    if (words.length === 0) return { tree: null, error: "" };
+    if (words.length === 1) return { tree: { label: words[0], children: [], terminal: true }, error: "" };
+    return {
+      tree: {
+        label: "",
+        children: words.map(w => ({ label: w, children: [], terminal: true })),
+        terminal: false,
+      },
+      error: "",
+    };
+  }
+
   const tree = parseNode();
   const error = (pos < src.length && src.substring(pos).trim().length > 0)
     ? "Unparsed input after position " + pos
@@ -1094,15 +1110,17 @@ function drawTree(input) {
       ctx.lineTo(nodeX(ch), nodeY(ch) - 10);
       ctx.stroke();
     }
-    // Draw label
-    if (n.terminal) {
-      ctx.font = "italic " + TREE_CFG.fontSize + "px serif";
-      ctx.fillStyle = "#333";
-    } else {
-      ctx.font = "bold " + TREE_CFG.fontSize + "px sans-serif";
-      ctx.fillStyle = "#111";
+    // Draw label (skip if empty — e.g. implicit root for plain words)
+    if (n.label) {
+      if (n.terminal) {
+        ctx.font = "italic " + TREE_CFG.fontSize + "px serif";
+        ctx.fillStyle = "#333";
+      } else {
+        ctx.font = "bold " + TREE_CFG.fontSize + "px sans-serif";
+        ctx.fillStyle = "#111";
+      }
+      ctx.fillText(n.label, x, y);
     }
-    ctx.fillText(n.label, x, y);
 
     for (const ch of n.children) drawNode(ch);
   }
