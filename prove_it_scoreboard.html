@@ -3,231 +3,917 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Prove It! — Grammar Game Scoreboard</title>
+<title>Prove It! — Mountain Climbing Grammar Game</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-    background: #f8f8f6;
-    color: #1a1a1a;
-    padding: 2rem;
-    max-width: 900px;
-    margin: 0 auto;
-  }
-  .header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 1.5rem; }
-  .title { font-size: 28px; font-weight: 600; }
-  .round-box { display: flex; align-items: center; gap: 8px; }
-  .round-label { font-size: 14px; color: #666; }
-  .round-num { font-size: 20px; font-weight: 600; min-width: 24px; text-align: center; }
-  .round-btn {
-    width: 30px; height: 30px; border-radius: 50%;
-    border: 1px solid #ccc; background: #fff; cursor: pointer;
-    font-size: 16px; display: flex; align-items: center; justify-content: center; color: #666;
-  }
-  .round-btn:hover { background: #f0f0f0; }
-
-  .lane {
-    display: grid;
-    grid-template-columns: 100px 1fr 140px;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 12px;
-    padding: 12px 14px;
-    border-radius: 10px;
-    border: 1px solid #e0e0e0;
-    background: #fff;
-  }
-  .team-name { font-size: 15px; font-weight: 500; display: flex; align-items: center; gap: 8px; }
-  .dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
-
-  .track-area { position: relative; height: 36px; }
-  .track-bg { position: absolute; top: 16px; left: 0; right: 0; height: 4px; background: #e8e8e8; border-radius: 2px; }
-  .tick { position: absolute; width: 1px; height: 6px; background: #d0d0d0; top: 10px; }
-  .tick-label { position: absolute; top: 22px; font-size: 9px; color: #aaa; transform: translateX(-50%); }
-  .token {
-    position: absolute; top: 8px;
-    width: 20px; height: 20px; border-radius: 50%;
-    border: 2px solid #fff;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-    transition: left 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-    z-index: 2;
-  }
-  .star-marker { position: absolute; top: -2px; font-size: 14px; z-index: 3; }
-
-  .controls { display: flex; gap: 4px; align-items: center; }
-  .ctrl-btn {
-    width: 34px; height: 30px; border-radius: 6px;
-    border: 1px solid #ccc; background: #fff; cursor: pointer;
-    font-size: 13px; font-weight: 600;
-  }
-  .ctrl-btn:hover { background: #f0f0f0; }
-  .ctrl-btn.plus { color: #0F6E56; }
-  .ctrl-btn.minus { color: #A32D2D; }
-  .ctrl-btn.bonus { color: #534AB7; font-size: 11px; }
-  .score { font-size: 16px; font-weight: 600; min-width: 22px; text-align: center; }
-
-  .legend {
-    display: flex; gap: 18px; margin-top: 1.2rem; padding-top: 1rem;
-    border-top: 1px solid #e8e8e8; flex-wrap: wrap;
-  }
-  .leg-item { font-size: 12px; color: #888; display: flex; align-items: center; gap: 5px; }
-  .leg-key {
-    display: inline-block; width: 20px; height: 20px; border-radius: 4px;
-    font-size: 11px; text-align: center; line-height: 20px; font-weight: 600;
-    border: 1px solid #ddd; background: #fafafa;
+    background: #1a1a2e; color: #eee;
+    height: 100vh; overflow: hidden;
+    display: flex; flex-direction: column;
   }
 
-  .winner-banner {
-    display: none; margin-top: 1.2rem; padding: 14px 18px;
-    border-radius: 10px; background: #eaf3de; border: 1px solid #97c459;
-    color: #3B6D11; font-size: 16px; font-weight: 500; text-align: center;
+  /* ── Header ── */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 24px; background: #16213e; border-bottom: 2px solid #0f3460;
+    flex-shrink: 0;
+  }
+  .title { font-size: 26px; font-weight: 700; color: #e8c547; letter-spacing: 1px; }
+  .group-tabs { display: flex; gap: 6px; }
+  .group-tab {
+    padding: 6px 16px; border-radius: 20px; border: 2px solid transparent;
+    cursor: pointer; font-size: 14px; font-weight: 600;
+    background: rgba(255,255,255,0.08); color: #aaa; transition: all 0.2s;
+  }
+  .group-tab:hover { background: rgba(255,255,255,0.15); }
+  .group-tab.active { color: #fff; border-color: currentColor; }
+  .group-tab .tab-turns { font-size: 11px; opacity: 0.7; margin-left: 4px; }
+  .group-tab.completed-tab { opacity: 0.7; }
+  .group-tab.completed-tab::after { content: " ⛰"; }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .hdr-btn {
+    padding: 6px 14px; border-radius: 6px; border: 1px solid #444;
+    background: rgba(255,255,255,0.06); color: #ccc; cursor: pointer;
+    font-size: 13px; transition: background 0.2s;
+  }
+  .hdr-btn:hover { background: rgba(255,255,255,0.14); }
+
+  /* ── Setup screen ── */
+  .setup-screen {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; flex: 1; gap: 28px;
+  }
+  .setup-screen h2 { font-size: 32px; color: #e8c547; }
+  .setup-screen p { color: #aaa; font-size: 16px; }
+  .group-count-picker { display: flex; gap: 12px; }
+  .group-count-btn {
+    width: 64px; height: 64px; border-radius: 12px; border: 2px solid #444;
+    background: rgba(255,255,255,0.06); color: #eee; font-size: 28px;
+    font-weight: 700; cursor: pointer; transition: all 0.2s;
+  }
+  .group-count-btn:hover { border-color: #e8c547; background: rgba(232,197,71,0.1); }
+
+  /* ── Main layout ── */
+  .main { display: flex; flex: 1; overflow: hidden; }
+  .col-mountain { width: 35%; min-width: 280px; position: relative; padding: 16px; display: flex; align-items: center; justify-content: center; }
+  .col-stage { width: 65%; padding: 24px 32px; display: flex; flex-direction: column; overflow-y: auto; }
+
+  /* ── Mountain SVG ── */
+  .mountain-wrap { width: 100%; height: 100%; position: relative; }
+  .mountain-wrap svg { width: 100%; height: 100%; }
+
+  /* ── Stage panel ── */
+  .stage-header { margin-bottom: 16px; }
+  .stage-label { font-size: 13px; color: #e8c547; text-transform: uppercase; letter-spacing: 2px; font-weight: 600; }
+  .stage-title { font-size: 28px; font-weight: 700; margin-top: 4px; }
+  .stage-subtitle { font-size: 15px; color: #999; margin-top: 4px; }
+
+  .turn-counter {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 14px; border-radius: 8px; background: rgba(255,255,255,0.06);
+    font-size: 14px; color: #ccc; margin-bottom: 20px;
+  }
+  .turn-counter strong { color: #e8c547; font-size: 18px; }
+
+  /* ── Reference chips ── */
+  .ref-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+  .ref-chip {
+    padding: 6px 14px; border-radius: 8px; border: 1px solid #444;
+    background: rgba(255,255,255,0.04); font-size: 14px; color: #bbb;
   }
 
-  .reset-btn {
-    margin-top: 1rem; padding: 8px 18px; border-radius: 6px;
-    border: 1px solid #ccc; background: #fff; cursor: pointer;
-    font-size: 13px; color: #888;
+  /* ── Action buttons ── */
+  .actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+  .act-btn {
+    padding: 14px 32px; border-radius: 10px; border: none;
+    font-size: 18px; font-weight: 700; cursor: pointer;
+    transition: transform 0.1s, filter 0.15s; color: #fff;
   }
-  .reset-btn:hover { background: #f0f0f0; }
+  .act-btn:hover { filter: brightness(1.15); }
+  .act-btn:active { transform: scale(0.97); }
+  .btn-correct { background: #1d9e75; }
+  .btn-incorrect { background: #c0392b; }
+  .btn-tryagain { background: #d4880f; }
+  .btn-approve { background: #1d9e75; }
+  .btn-reject { background: #c0392b; }
+
+  /* ── Test card ── */
+  .test-card {
+    padding: 20px 24px; border-radius: 12px; border: 1px solid #2a5a3a;
+    background: rgba(29,158,117,0.08); margin-bottom: 16px;
+  }
+  .test-card h3 { font-size: 20px; color: #4cd9a0; margin-bottom: 6px; }
+  .test-card .test-desc { font-size: 15px; color: #bbb; line-height: 1.5; }
+  .test-card .test-example { font-size: 14px; color: #999; margin-top: 8px; font-style: italic; }
+  .tests-used { font-size: 13px; color: #666; margin-top: 8px; }
+
+  /* ── Tree drawing ── */
+  .tree-input-area { margin-bottom: 12px; }
+  .tree-input-area label { font-size: 14px; color: #999; display: block; margin-bottom: 6px; }
+  .tree-input-area textarea {
+    width: 100%; height: 80px; border-radius: 8px; border: 1px solid #444;
+    background: #111; color: #eee; padding: 10px; font-family: "Fira Code", "Consolas", monospace;
+    font-size: 15px; resize: vertical;
+  }
+  .tree-input-area textarea:focus { outline: none; border-color: #e8c547; }
+  .canvas-wrap {
+    border: 1px solid #333; border-radius: 8px; background: #fff;
+    overflow: auto; max-height: 340px; min-height: 120px;
+  }
+  .canvas-wrap canvas { display: block; }
+  .parse-error { color: #e74c3c; font-size: 13px; margin-top: 4px; min-height: 18px; }
+
+  /* ── Sentence card display ── */
+  .sentence-card {
+    margin-bottom: 20px; padding: 18px 22px; border-radius: 12px;
+    background: rgba(138,103,205,0.1); border: 1px solid rgba(138,103,205,0.3);
+  }
+  .sentence-card .card-label {
+    font-size: 11px; color: #a07ed6; text-transform: uppercase;
+    letter-spacing: 1.5px; margin-bottom: 8px; display: flex;
+    align-items: center; justify-content: space-between;
+  }
+  .sentence-card .card-label .difficulty { color: #e8c547; letter-spacing: 0; }
+  .sentence-card .sentence-text { font-size: 24px; font-weight: 500; line-height: 1.4; color: #eee; }
+  .sentence-card .sentence-text .underlined { text-decoration: underline; text-decoration-color: #e8c547; text-underline-offset: 4px; text-decoration-thickness: 2px; }
+  .sentence-card .identify-label { font-size: 14px; color: #aaa; margin-top: 8px; }
+  .no-sentence { color: #666; font-style: italic; margin-bottom: 20px; }
+  .draw-card-btn {
+    padding: 12px 28px; border-radius: 10px; border: 2px solid #a07ed6;
+    background: rgba(138,103,205,0.12); color: #c9b3e8; font-size: 16px;
+    font-weight: 600; cursor: pointer; transition: all 0.2s; margin-bottom: 20px;
+  }
+  .draw-card-btn:hover { background: rgba(138,103,205,0.25); border-color: #c9b3e8; }
+
+  /* ── Summit celebration ── */
+  .summit-panel { text-align: center; padding: 40px 0; }
+  .summit-panel h2 { font-size: 36px; color: #e8c547; margin-bottom: 8px; }
+  .summit-panel .summit-turns { font-size: 22px; color: #aaa; }
+
+  /* ── Leaderboard overlay ── */
+  .lb-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center; z-index: 100;
+  }
+  .lb-overlay.hidden { display: none; }
+  .lb-card {
+    background: #1a1a2e; border: 2px solid #0f3460; border-radius: 16px;
+    padding: 32px 40px; min-width: 400px; max-width: 90vw;
+  }
+  .lb-card h2 { font-size: 24px; color: #e8c547; margin-bottom: 16px; text-align: center; }
+  .lb-row {
+    display: flex; align-items: center; gap: 12px; padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 18px;
+  }
+  .lb-row:last-child { border-bottom: none; }
+  .lb-rank { width: 32px; text-align: center; color: #e8c547; font-weight: 700; }
+  .lb-name { flex: 1; }
+  .lb-stat { color: #999; font-size: 15px; }
+  .lb-close {
+    display: block; margin: 20px auto 0; padding: 8px 24px;
+    border-radius: 8px; border: 1px solid #444; background: transparent;
+    color: #ccc; cursor: pointer; font-size: 14px;
+  }
+  .lb-close:hover { background: rgba(255,255,255,0.08); }
 </style>
 </head>
 <body>
 
-<div class="header">
-  <div class="title">Prove it!</div>
-  <div class="round-box">
-    <span class="round-label">round</span>
-    <button class="round-btn" onclick="changeRound(-1)">-</button>
-    <span class="round-num" id="roundNum">1</span>
-    <button class="round-btn" onclick="changeRound(1)">+</button>
+<!-- ═══ Setup screen ═══ -->
+<div class="setup-screen" id="setupScreen">
+  <h2>Prove It!</h2>
+  <p>How many groups are playing?</p>
+  <div class="group-count-picker" id="groupPicker"></div>
+</div>
+
+<!-- ═══ Game screen ═══ -->
+<div id="gameScreen" style="display:none; flex-direction:column; flex:1; overflow:hidden;">
+  <div class="header">
+    <div class="title">Prove It!</div>
+    <div class="group-tabs" id="groupTabs"></div>
+    <div class="header-right">
+      <button class="hdr-btn" onclick="showLeaderboard()">Leaderboard</button>
+      <button class="hdr-btn" onclick="resetGame()">Reset</button>
+    </div>
+  </div>
+  <div class="main">
+    <div class="col-mountain" id="colMountain"></div>
+    <div class="col-stage" id="colStage"></div>
   </div>
 </div>
 
-<div id="lanes"></div>
-<div class="winner-banner" id="winner"></div>
-
-<div class="legend">
-  <div class="leg-item"><span class="leg-key" style="color:#0F6E56;">+1</span> gate cleared</div>
-  <div class="leg-item"><span class="leg-key" style="color:#534AB7;">+2</span> self-correction bonus</div>
-  <div class="leg-item"><span class="leg-key" style="color:#A32D2D;">-1</span> undo mistake</div>
+<!-- ═══ Leaderboard overlay ═══ -->
+<div class="lb-overlay hidden" id="lbOverlay" onclick="if(event.target===this)closeLB()">
+  <div class="lb-card">
+    <h2>Leaderboard</h2>
+    <div id="lbBody"></div>
+    <button class="lb-close" onclick="closeLB()">Close</button>
+  </div>
 </div>
 
-<button class="reset-btn" onclick="resetAll()">reset game</button>
-
 <script>
-const MAX = 15;
-
-const teams = [
-  { name: "Group 1", color: "#378ADD", pos: 0 },
-  { name: "Group 2", color: "#D85A30", pos: 0 },
-  { name: "Group 3", color: "#1D9E75", pos: 0 },
-  { name: "Group 4", color: "#D4537E", pos: 0 },
+/* ════════════════════════════════════════
+   Constants
+   ════════════════════════════════════════ */
+const STAGES = [
+  { key: "identifyPhrase", label: "Camp 1", title: "Identify Phrase Type", type: "identify" },
+  { key: "provePhrase",    label: "Camp 2", title: "Prove Phrase Type",    type: "prove" },
+  { key: "identifyFunc",   label: "Camp 3", title: "Identify Syntactic Function", type: "identify" },
+  { key: "proveFunc",      label: "Camp 4", title: "Prove Syntactic Function",    type: "prove" },
+  { key: "drawTree",       label: "Summit", title: "Draw Syntax Tree",    type: "tree" },
 ];
 
-let round = 1;
+const PHRASE_TYPES = ["NP", "VP", "AdjP", "AdvP", "PP"];
 
-// Save/load from localStorage so a page refresh doesn't kill the game
+const FUNCTIONS = [
+  "Subject", "Direct Object", "Indirect Object", "Prep. Object",
+  "Subject Predicate", "Object Predicate", "VP-Adverbial", "S-Adverbial",
+  "Modifier", "Complement", "Head"
+];
+
+const TESTS = [
+  { name: "Pronominalization",
+    desc: "Replace the phrase with a pronoun (he, she, it, they, there, then …). If the sentence stays grammatical with the same meaning, the phrase is a constituent.",
+    example: "The tall man → He" },
+  { name: "Movement",
+    desc: "Move the phrase to the front or another position in the sentence. If the result is grammatical, the phrase is a constituent.",
+    example: "She read the book quickly → Quickly, she read the book" },
+  { name: "Passivization",
+    desc: "Turn the sentence from active to passive voice (or vice versa). If the phrase can become the subject of a passive, it's likely a direct object NP.",
+    example: "The cat caught the mouse → The mouse was caught by the cat" },
+  { name: "Coordination",
+    desc: "Conjoin the phrase with another phrase of the same type using 'and' or 'or'. If the result is grammatical, both are the same type of constituent.",
+    example: "the big dog and the small cat → both NPs" },
+  { name: "Omission",
+    desc: "Remove the phrase from the sentence. If the sentence remains grammatical, the phrase is likely an adjunct/modifier rather than a complement.",
+    example: "She sang beautifully → She sang" },
+  { name: "Agreement",
+    desc: "Check whether the phrase triggers subject-verb agreement. If changing its number changes the verb form, it's likely the subject NP.",
+    example: "The dog runs / The dogs run → 'the dog(s)' is the subject" },
+  { name: "Topicalisation",
+    desc: "Move the phrase to the front of the sentence to make it the topic. If grammatical, the phrase is a constituent.",
+    example: "I like this book → This book, I like" },
+  { name: "Do-so replacement",
+    desc: "Replace a VP with 'do so'. If the sentence stays grammatical, the replaced part is a VP constituent.",
+    example: "John ate the cake and Mary did so too" },
+  { name: "Question formation",
+    desc: "Form a question that targets the phrase using who, what, where, when, how. If you can question it, it's a constituent with a specific function.",
+    example: "She saw the cat → What did she see?" },
+];
+
+const SENTENCES = [
+  { sentence: "The students found the answer.", phrase: "the answer", phraseType: "NP", function: "Direct Object", difficulty: 1, notes: "Pronominalize: found it. Passivize: The answer was found." },
+  { sentence: "She left quickly.", phrase: "quickly", phraseType: "AdvP", function: "VP-Adverbial", difficulty: 1, notes: "Omit: She left. Still grammatical → optional → adverbial." },
+  { sentence: "The old cat slept on the mat.", phrase: "on the mat", phraseType: "PP", function: "VP-Adverbial", difficulty: 1, notes: "Omit: The old cat slept. Still grammatical → adverbial. Cannot passivize: *The mat was slept on." },
+  { sentence: "They seemed very happy.", phrase: "very happy", phraseType: "AdjP", function: "Subject Predicate", difficulty: 1, notes: "Cannot omit: *They seemed. Cannot passivize. Describes the subject they." },
+  { sentence: "He gave her the book.", phrase: "her", phraseType: "NP", function: "Indirect Object", difficulty: 1, notes: "Passivize: She was given the book. Can rephrase with to: gave the book to her." },
+  { sentence: "The rabbit planted carrots.", phrase: "The rabbit", phraseType: "NP", function: "Subject", difficulty: 1, notes: "Agreement: The rabbits planted carrots (verb changes). Tag: …didn't it?" },
+  { sentence: "The pig from Mars left relatively early.", phrase: "from Mars", phraseType: "PP", function: "Modifier (inside NP)", difficulty: 2, notes: "Modifies pig, not the VP. Pronominalize the whole NP: It left. The PP is part of the NP, not a separate adverbial." },
+  { sentence: "Fortunately, she found it easily.", phrase: "Fortunately", phraseType: "AdvP", function: "S-Adverbial", difficulty: 2, notes: "Omit: She found it easily. Still grammatical. Expresses speaker's attitude about the whole sentence, not the VP." },
+  { sentence: "He referred to that article.", phrase: "to that article", phraseType: "PP", function: "Prepositional Object", difficulty: 2, notes: "Cannot omit: *He referred. Passivize: That article was referred to. → object, not adverbial." },
+  { sentence: "The students considered the problem difficult.", phrase: "difficult", phraseType: "AdjP", function: "Object Predicate", difficulty: 2, notes: "Cannot omit: *The students considered the problem. Describes the object the problem." },
+  { sentence: "A very curious red book was found.", phrase: "very curious", phraseType: "AdjP", function: "Modifier (inside NP)", difficulty: 2, notes: "Modifies the head noun book. Coordinate: A very curious and extremely old book. Sister to N'." },
+  { sentence: "Wisely, they left before dark.", phrase: "Wisely", phraseType: "AdvP", function: "S-Adverbial", difficulty: 2, notes: "Two readings: (1) they were wise to leave (S-adv) or (2) they left in a wise manner (VP-adv). Sentence-initial + comma → S-adverbial." },
+  { sentence: "A teacher of physics from England won the prize.", phrase: "of physics", phraseType: "PP", function: "Complement (inside NP)", difficulty: 3, notes: "Cannot reverse: *a teacher from England of physics. One-substitution: a teacher of physics from England → one from England. Sister to N." },
+  { sentence: "A teacher of physics from England won the prize.", phrase: "from England", phraseType: "PP", function: "Modifier (inside NP)", difficulty: 3, notes: "Can reverse only after complement. One-substitution: one from England replaces teacher of physics. Sister to N'." },
+  { sentence: "The attack on the conclusions of that report shocked everyone.", phrase: "on the conclusions of that report", phraseType: "PP", function: "Complement (inside NP)", difficulty: 3, notes: "Attack is verb-like (cf. attacked the conclusions). The PP = what was attacked. Sister to N." },
+  { sentence: "She spotted the man with the binoculars.", phrase: "with the binoculars", phraseType: "PP", function: "AMBIGUOUS", difficulty: 3, notes: "Two trees: (1) PP modifies man (sister to N') → the man who has binoculars; (2) PP is VP-adverbial (sister to V') → she used binoculars to spot him." },
+  { sentence: "He hides behind the pile of books on his desk.", phrase: "on his desk", phraseType: "PP", function: "Modifier (inside NP)", difficulty: 3, notes: "Modifies pile, not hides. If VP-adverbial, it would mean he hides ON his desk. Sister to N'." },
+  { sentence: "The blatantly illegal plan worried the extremely cautious professor of linguistics.", phrase: "blatantly illegal", phraseType: "AdjP", function: "Modifier (inside NP)", difficulty: 3, notes: "Modifies plan. blatantly is AdvP modifier to Adj head illegal. The AdjP is sister to N'." },
+];
+
+const GROUP_COLORS = ["#378ADD","#D85A30","#1D9E75","#D4537E","#9B59B6","#E8C547"];
+
+/* ════════════════════════════════════════
+   State
+   ════════════════════════════════════════ */
+let state = null; // { groups: [...], activeGroupIndex, view }
+
+function newGroupState(i) {
+  return {
+    name: "Group " + (i + 1),
+    color: GROUP_COLORS[i],
+    stageIndex: 0,
+    turns: 0,
+    currentTestIdx: null,
+    testsUsed: [],
+    bracketInput: "",
+    sentenceIdx: null,
+    completed: false,
+  };
+}
+
 function save() {
-  localStorage.setItem("proveIt", JSON.stringify({ teams, round }));
+  localStorage.setItem("proveItMountain", JSON.stringify(state));
 }
 
-function load() {
+function loadState() {
   try {
-    const d = JSON.parse(localStorage.getItem("proveIt"));
-    if (d && d.teams) {
-      d.teams.forEach((t, i) => { if (teams[i]) teams[i].pos = t.pos; });
-      round = d.round || 1;
-      document.getElementById("roundNum").textContent = round;
-    }
-  } catch (e) {}
+    const d = JSON.parse(localStorage.getItem("proveItMountain"));
+    if (d && d.groups && d.groups.length) { state = d; return true; }
+  } catch(e) {}
+  return false;
 }
 
+/* ════════════════════════════════════════
+   Setup screen
+   ════════════════════════════════════════ */
+function initSetup() {
+  const picker = document.getElementById("groupPicker");
+  picker.innerHTML = "";
+  for (let n = 3; n <= 6; n++) {
+    const btn = document.createElement("button");
+    btn.className = "group-count-btn";
+    btn.textContent = n;
+    btn.onclick = () => startNewGame(n);
+    picker.appendChild(btn);
+  }
+}
+
+function startNewGame(n) {
+  state = {
+    groups: Array.from({ length: n }, (_, i) => newGroupState(i)),
+    activeGroupIndex: 0,
+    usedSentences: [],
+    view: "game",
+  };
+  save();
+  showGame();
+}
+
+function showSetup() {
+  document.getElementById("setupScreen").style.display = "flex";
+  document.getElementById("gameScreen").style.display = "none";
+}
+
+function showGame() {
+  document.getElementById("setupScreen").style.display = "none";
+  const gs = document.getElementById("gameScreen");
+  gs.style.display = "flex";
+  render();
+}
+
+/* ════════════════════════════════════════
+   Render orchestrator
+   ════════════════════════════════════════ */
 function render() {
-  const c = document.getElementById("lanes");
+  renderTabs();
+  renderMountain();
+  renderStage();
+  save();
+}
+
+/* ════════════════════════════════════════
+   Group tabs
+   ════════════════════════════════════════ */
+function renderTabs() {
+  const c = document.getElementById("groupTabs");
   c.innerHTML = "";
+  state.groups.forEach((g, i) => {
+    const btn = document.createElement("button");
+    btn.className = "group-tab" + (i === state.activeGroupIndex ? " active" : "") + (g.completed ? " completed-tab" : "");
+    btn.style.color = i === state.activeGroupIndex ? g.color : "";
+    btn.style.borderColor = i === state.activeGroupIndex ? g.color : "transparent";
+    btn.innerHTML = g.name + '<span class="tab-turns">' + g.turns + "T</span>";
+    btn.onclick = () => { state.activeGroupIndex = i; render(); };
+    c.appendChild(btn);
+  });
+}
 
-  teams.forEach((t, i) => {
-    const lane = document.createElement("div");
-    lane.className = "lane";
+/* ════════════════════════════════════════
+   Mountain SVG
+   ════════════════════════════════════════ */
+const CAMP_POSITIONS = [
+  { x: 60, y: 390 },   // Camp 1 (base)
+  { x: 100, y: 310 },  // Camp 2
+  { x: 170, y: 240 },  // Camp 3
+  { x: 230, y: 170 },  // Camp 4
+  { x: 220, y: 80 },   // Summit (Camp 5 / Draw tree)
+];
 
-    // Team name
-    const nameDiv = document.createElement("div");
-    nameDiv.className = "team-name";
-    nameDiv.innerHTML = '<span class="dot" style="background:' + t.color + '"></span>' + t.name;
+function renderMountain() {
+  const c = document.getElementById("colMountain");
 
-    // Track
-    const trackDiv = document.createElement("div");
-    trackDiv.className = "track-area";
-    let html = '<div class="track-bg"></div>';
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.setAttribute("viewBox", "0 0 340 440");
+  svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
 
-    for (let s = 0; s <= MAX; s++) {
-      const pct = (s / MAX) * 100;
-      html += '<div class="tick" style="left:' + pct + '%;"></div>';
-      if (s % 5 === 0) {
-        html += '<span class="tick-label" style="left:' + pct + '%;">' + s + '</span>';
-      }
+  // Defs: mountain gradient
+  const defs = document.createElementNS(svgNS, "defs");
+  const grad = document.createElementNS(svgNS, "linearGradient");
+  grad.id = "mtnGrad"; grad.setAttribute("x1","0"); grad.setAttribute("y1","1");
+  grad.setAttribute("x2","0"); grad.setAttribute("y2","0");
+  const stops = [
+    { offset: "0%", color: "#2d5a27" },
+    { offset: "40%", color: "#3a7233" },
+    { offset: "70%", color: "#7a8a72" },
+    { offset: "90%", color: "#c8c8c8" },
+    { offset: "100%", color: "#f0f0f0" },
+  ];
+  stops.forEach(s => {
+    const st = document.createElementNS(svgNS, "stop");
+    st.setAttribute("offset", s.offset);
+    st.setAttribute("stop-color", s.color);
+    grad.appendChild(st);
+  });
+  defs.appendChild(grad);
+  svg.appendChild(defs);
+
+  // Sky
+  const sky = document.createElementNS(svgNS, "rect");
+  sky.setAttribute("width","340"); sky.setAttribute("height","440");
+  sky.setAttribute("fill","#1a1a2e");
+  svg.appendChild(sky);
+
+  // Mountain silhouette
+  const mtn = document.createElementNS(svgNS, "polygon");
+  mtn.setAttribute("points", "0,430 70,410 140,350 200,260 220,80 260,200 300,310 340,430");
+  mtn.setAttribute("fill", "url(#mtnGrad)");
+  svg.appendChild(mtn);
+
+  // Snow cap
+  const snow = document.createElementNS(svgNS, "polygon");
+  snow.setAttribute("points", "195,130 220,80 245,135 230,140 210,135");
+  snow.setAttribute("fill", "#f4f4f4"); snow.setAttribute("opacity","0.7");
+  svg.appendChild(snow);
+
+  // Climbing path (dashed)
+  const pathD = "M 60,390 Q 70,350 100,310 Q 130,270 170,240 Q 200,215 230,170 Q 235,130 220,80";
+  const trail = document.createElementNS(svgNS, "path");
+  trail.setAttribute("d", pathD);
+  trail.setAttribute("fill", "none");
+  trail.setAttribute("stroke", "rgba(255,255,255,0.3)");
+  trail.setAttribute("stroke-width", "2");
+  trail.setAttribute("stroke-dasharray", "6,4");
+  svg.appendChild(trail);
+
+  // Camp markers
+  CAMP_POSITIONS.forEach((pos, i) => {
+    const g = document.createElementNS(svgNS, "g");
+
+    if (i < 4) {
+      // Tent icon
+      const tent = document.createElementNS(svgNS, "polygon");
+      const tx = pos.x, ty = pos.y;
+      tent.setAttribute("points", `${tx},${ty-10} ${tx-8},${ty+4} ${tx+8},${ty+4}`);
+      tent.setAttribute("fill", "rgba(232,197,71,0.5)");
+      tent.setAttribute("stroke", "#e8c547");
+      tent.setAttribute("stroke-width", "1");
+      g.appendChild(tent);
+    } else {
+      // Summit flag
+      const pole = document.createElementNS(svgNS, "line");
+      pole.setAttribute("x1", pos.x); pole.setAttribute("y1", pos.y - 20);
+      pole.setAttribute("x2", pos.x); pole.setAttribute("y2", pos.y + 5);
+      pole.setAttribute("stroke", "#e8c547"); pole.setAttribute("stroke-width", "2");
+      g.appendChild(pole);
+      const flag = document.createElementNS(svgNS, "polygon");
+      flag.setAttribute("points", `${pos.x},${pos.y-20} ${pos.x+14},${pos.y-14} ${pos.x},${pos.y-8}`);
+      flag.setAttribute("fill", "#e8c547");
+      g.appendChild(flag);
     }
 
-    const tokenLeft = (t.pos / MAX) * 100;
-    html += '<div class="token" style="background:' + t.color + ';left:calc(' + tokenLeft + '% - 10px);"></div>';
+    // Label
+    const label = document.createElementNS(svgNS, "text");
+    label.setAttribute("x", pos.x + 14);
+    label.setAttribute("y", pos.y + 2);
+    label.setAttribute("font-size", "11");
+    label.setAttribute("fill", "rgba(255,255,255,0.6)");
+    label.setAttribute("font-family", "sans-serif");
+    label.textContent = STAGES[i].label;
+    g.appendChild(label);
 
-    if (t.pos >= MAX) {
-      html += '<div class="star-marker" style="left:calc(' + tokenLeft + '% - 7px);">&#x2605;</div>';
-    }
-
-    trackDiv.innerHTML = html;
-
-    // Controls
-    const ctrlDiv = document.createElement("div");
-    ctrlDiv.className = "controls";
-    ctrlDiv.innerHTML =
-      '<button class="ctrl-btn minus" onclick="move(' + i + ',-1)">-1</button>' +
-      '<span class="score">' + t.pos + '</span>' +
-      '<button class="ctrl-btn plus" onclick="move(' + i + ',1)">+1</button>' +
-      '<button class="ctrl-btn plus" onclick="move(' + i + ',2)">+2</button>' +
-      '<button class="ctrl-btn bonus" onclick="move(' + i + ',3)">+3</button>';
-
-    lane.appendChild(nameDiv);
-    lane.appendChild(trackDiv);
-    lane.appendChild(ctrlDiv);
-    c.appendChild(lane);
+    svg.appendChild(g);
   });
 
-  // Winner check
-  const winners = teams.filter(t => t.pos >= MAX);
-  const wb = document.getElementById("winner");
-  if (winners.length > 0) {
-    wb.style.display = "block";
-    wb.textContent = winners.map(w => w.name).join(" & ") + " reached the finish!";
-  } else {
-    wb.style.display = "none";
+  // Climbers
+  state.groups.forEach((grp, gi) => {
+    const si = grp.completed ? 4 : grp.stageIndex;
+    const pos = CAMP_POSITIONS[si];
+    const isActive = gi === state.activeGroupIndex;
+    const r = isActive ? 9 : 5;
+    const offsetX = (gi - (state.groups.length - 1) / 2) * (isActive ? 4 : 8);
+
+    const circle = document.createElementNS(svgNS, "circle");
+    circle.setAttribute("cx", pos.x + offsetX);
+    circle.setAttribute("cy", pos.y - 16 - (isActive ? 4 : 0));
+    circle.setAttribute("r", r);
+    circle.setAttribute("fill", grp.color);
+    circle.setAttribute("stroke", "#fff");
+    circle.setAttribute("stroke-width", isActive ? "2" : "1");
+    circle.setAttribute("opacity", isActive ? "1" : "0.5");
+    svg.appendChild(circle);
+  });
+
+  c.innerHTML = "";
+  c.appendChild(svg);
+}
+
+/* ════════════════════════════════════════
+   Stage rendering
+   ════════════════════════════════════════ */
+function renderStage() {
+  const c = document.getElementById("colStage");
+  const g = state.groups[state.activeGroupIndex];
+
+  if (g.completed) {
+    c.innerHTML = '<div class="summit-panel">' +
+      '<h2>Summit Reached!</h2>' +
+      '<div class="summit-turns">' + g.name + ' finished in <strong>' + g.turns + '</strong> turns</div>' +
+      '</div>';
+    return;
   }
 
-  save();
+  const stage = STAGES[g.stageIndex];
+  let html = '<div class="stage-header">' +
+    '<div class="stage-label">' + stage.label + ' — Stage ' + (g.stageIndex + 1) + ' of 5</div>' +
+    '<div class="stage-title">' + stage.title + '</div>' +
+    '</div>' +
+    '<div class="turn-counter">Turns: <strong>' + g.turns + '</strong></div>';
+
+  // Sentence card display
+  if (g.sentenceIdx !== null) {
+    const s = SENTENCES[g.sentenceIdx];
+    const stars = "\u2605".repeat(s.difficulty) + "\u2606".repeat(3 - s.difficulty);
+    const highlighted = s.sentence.replace(s.phrase, '<span class="underlined">' + s.phrase + '</span>');
+    html += '<div class="sentence-card">' +
+      '<div class="card-label"><span>Sentence Card</span><span class="difficulty">' + stars + '</span></div>' +
+      '<div class="sentence-text">' + highlighted + '</div>' +
+      '<div class="identify-label">Identify: <strong>' + s.phrase + '</strong></div>' +
+      '</div>';
+  } else {
+    html += '<button class="draw-card-btn" onclick="drawSentenceCard()">Draw Sentence Card</button>';
+  }
+
+  if (stage.type === "identify") {
+    html += renderIdentifyStage(g);
+  } else if (stage.type === "prove") {
+    html += renderProveStage(g);
+  } else if (stage.type === "tree") {
+    html += renderTreeStage(g);
+  }
+
+  c.innerHTML = html;
+
+  // Post-render hooks — restore focus to phrase input if it was focused
+  if (stage.type === "tree") {
+    const ta = document.getElementById("bracketInput");
+    if (ta) {
+      ta.value = g.bracketInput || "";
+      ta.addEventListener("input", onBracketInput);
+      drawTree(g.bracketInput || "");
+    }
+  }
 }
 
-function move(idx, delta) {
-  teams[idx].pos = Math.max(0, Math.min(MAX, teams[idx].pos + delta));
+/* ── Identify stage ── */
+function renderIdentifyStage(g) {
+  const chips = g.stageIndex === 0 ? PHRASE_TYPES : FUNCTIONS;
+  const chipLabel = g.stageIndex === 0 ? "Phrase types" : "Syntactic functions";
+  let html = '<div class="stage-subtitle">' +
+    (g.stageIndex === 0
+      ? "The group identifies the phrase type of the underlined phrase."
+      : "The group identifies the syntactic function of the phrase.") +
+    '</div>';
+  html += '<div style="font-size:13px;color:#777;margin:12px 0 6px;">' + chipLabel + ':</div>';
+  html += '<div class="ref-chips">';
+  chips.forEach(ch => { html += '<div class="ref-chip">' + ch + '</div>'; });
+  html += '</div>';
+  html += '<div class="actions">' +
+    '<button class="act-btn btn-correct" onclick="stageCorrect()">Correct</button>' +
+    '<button class="act-btn btn-incorrect" onclick="stageIncorrect()">Incorrect</button>' +
+    '</div>';
+  return html;
+}
+
+/* ── Prove stage ── */
+function renderProveStage(g) {
+  // Assign test if needed
+  if (g.currentTestIdx === null) {
+    assignRandomTest(g);
+    save();
+  }
+
+  const test = TESTS[g.currentTestIdx];
+  const usedCount = g.testsUsed.length;
+
+  let html = '<div class="stage-subtitle">' +
+    (g.stageIndex === 1
+      ? "Apply the assigned test to prove the phrase type."
+      : "Apply the assigned test to prove the syntactic function.") +
+    '</div>';
+
+  html += '<div class="test-card">' +
+    '<h3>' + test.name + '</h3>' +
+    '<div class="test-desc">' + test.desc + '</div>' +
+    '<div class="test-example">Example: ' + test.example + '</div>' +
+    '</div>';
+
+  html += '<div class="tests-used">Tests used this stage: ' + usedCount + ' / ' + TESTS.length + '</div>';
+
+  html += '<div class="actions">' +
+    '<button class="act-btn btn-correct" onclick="proveProven()">Proven</button>' +
+    '<button class="act-btn btn-tryagain" onclick="proveTryAnother()">Try Another Test</button>' +
+    '<button class="act-btn btn-incorrect" onclick="proveIncorrect()">Incorrect</button>' +
+    '</div>';
+  return html;
+}
+
+function assignRandomTest(g) {
+  const available = TESTS.map((_, i) => i).filter(i => !g.testsUsed.includes(i));
+  if (available.length === 0) {
+    // Reset pool
+    g.testsUsed = [];
+    return assignRandomTest(g);
+  }
+  const pick = available[Math.floor(Math.random() * available.length)];
+  g.currentTestIdx = pick;
+  if (!g.testsUsed.includes(pick)) g.testsUsed.push(pick);
+}
+
+/* ── Tree stage ── */
+function renderTreeStage(g) {
+  let html = '<div class="stage-subtitle">Enter labelled bracket notation. The tree renders in real time.</div>';
+  html += '<div class="tree-input-area">' +
+    '<label>Bracket notation:</label>' +
+    '<textarea id="bracketInput" placeholder="[S [NP [Det the] [N cat]] [VP [V sat]]]" spellcheck="false"></textarea>' +
+    '<div class="parse-error" id="parseError"></div>' +
+    '</div>';
+  html += '<div class="canvas-wrap"><canvas id="treeCanvas" width="600" height="200"></canvas></div>';
+  html += '<div class="actions">' +
+    '<button class="act-btn btn-approve" onclick="treeApprove()">Approved</button>' +
+    '<button class="act-btn btn-reject" onclick="treeReject()">Rejected</button>' +
+    '</div>';
+  return html;
+}
+
+/* ════════════════════════════════════════
+   Game actions
+   ════════════════════════════════════════ */
+function activeGroup() { return state.groups[state.activeGroupIndex]; }
+
+function advanceStage() {
+  const g = activeGroup();
+  g.currentTestIdx = null;
+  g.testsUsed = [];
+  g.bracketInput = "";
+  if (g.stageIndex < 4) {
+    g.stageIndex++;
+  } else {
+    g.completed = true;
+  }
   render();
 }
 
-function changeRound(d) {
-  round = Math.max(1, round + d);
-  document.getElementById("roundNum").textContent = round;
-  save();
+function stageCorrect() {
+  activeGroup().turns++;
+  advanceStage();
 }
 
-function resetAll() {
-  if (!confirm("Reset all scores to zero?")) return;
-  teams.forEach(t => t.pos = 0);
-  round = 1;
-  document.getElementById("roundNum").textContent = 1;
+function stageIncorrect() {
+  activeGroup().turns++;
   render();
 }
 
-load();
-render();
+function proveProven() {
+  activeGroup().turns++;
+  advanceStage();
+}
+
+function proveTryAnother() {
+  const g = activeGroup();
+  g.turns++;
+  assignRandomTest(g);
+  render();
+}
+
+function proveIncorrect() {
+  const g = activeGroup();
+  g.turns++;
+  render(); // same test stays
+}
+
+function treeApprove() {
+  activeGroup().turns++;
+  advanceStage();
+}
+
+function treeReject() {
+  activeGroup().turns++;
+  render();
+}
+
+function drawSentenceCard() {
+  const g = activeGroup();
+  if (!state.usedSentences) state.usedSentences = [];
+  const available = SENTENCES.map((_, i) => i).filter(i => !state.usedSentences.includes(i));
+  if (available.length === 0) state.usedSentences = []; // reset pool if exhausted
+  const pool = available.length > 0 ? available : SENTENCES.map((_, i) => i);
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  g.sentenceIdx = pick;
+  state.usedSentences.push(pick);
+  render();
+}
+
+function onBracketInput(e) {
+  const g = activeGroup();
+  g.bracketInput = e.target.value;
+  save();
+  drawTree(e.target.value);
+}
+
+/* ════════════════════════════════════════
+   Bracket parser (recursive descent)
+   ════════════════════════════════════════ */
+function parseBrackets(input) {
+  let pos = 0;
+  const src = input.trim();
+
+  function skipWS() { while (pos < src.length && /\s/.test(src[pos])) pos++; }
+
+  function parseNode() {
+    skipWS();
+    if (pos >= src.length) return null;
+    if (src[pos] === '[') {
+      pos++; // consume '['
+      skipWS();
+      // Read label
+      let label = "";
+      while (pos < src.length && !/[\s\[\]]/.test(src[pos])) { label += src[pos]; pos++; }
+      if (!label) label = "?";
+      const children = [];
+      skipWS();
+      while (pos < src.length && src[pos] !== ']') {
+        const child = parseNode();
+        if (child) children.push(child);
+        else break;
+        skipWS();
+      }
+      if (pos < src.length && src[pos] === ']') pos++; // consume ']'
+      return { label, children, terminal: false };
+    } else if (src[pos] !== ']') {
+      // Terminal word
+      let word = "";
+      while (pos < src.length && !/[\s\[\]]/.test(src[pos])) { word += src[pos]; pos++; }
+      return { label: word, children: [], terminal: true };
+    }
+    return null;
+  }
+
+  const tree = parseNode();
+  const error = (pos < src.length && src.substring(pos).trim().length > 0)
+    ? "Unparsed input after position " + pos
+    : "";
+  return { tree, error };
+}
+
+/* ════════════════════════════════════════
+   Tree renderer (Canvas)
+   ════════════════════════════════════════ */
+const TREE_CFG = {
+  leafSpacing: 50,
+  levelHeight: 56,
+  paddingX: 30,
+  paddingY: 30,
+  fontSize: 15,
+};
+
+function layoutTree(node, depth, leafCounter) {
+  if (!node) return leafCounter;
+  node.depth = depth;
+  if (node.children.length === 0) {
+    node.leafX = leafCounter;
+    return leafCounter + 1;
+  }
+  let counter = leafCounter;
+  for (const ch of node.children) {
+    counter = layoutTree(ch, depth + 1, counter);
+  }
+  // Center x over children
+  const firstChild = node.children[0];
+  const lastChild = node.children[node.children.length - 1];
+  node.leafX = (firstChild.leafX + lastChild.leafX) / 2;
+  return counter;
+}
+
+function getMaxDepth(node) {
+  if (!node) return 0;
+  if (node.children.length === 0) return node.depth;
+  return Math.max(...node.children.map(getMaxDepth));
+}
+
+function drawTree(input) {
+  const canvas = document.getElementById("treeCanvas");
+  const errEl = document.getElementById("parseError");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+
+  const { tree, error } = parseBrackets(input);
+  if (errEl) errEl.textContent = error;
+
+  if (!tree) {
+    canvas.width = 600; canvas.height = 60;
+    ctx.clearRect(0, 0, 600, 60);
+    ctx.fillStyle = "#999"; ctx.font = "14px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("Tree will appear here…", 300, 36);
+    return;
+  }
+
+  const leafCount = layoutTree(tree, 0, 0);
+  const maxDepth = getMaxDepth(tree);
+
+  const W = Math.max(400, leafCount * TREE_CFG.leafSpacing + TREE_CFG.paddingX * 2);
+  const H = (maxDepth + 1) * TREE_CFG.levelHeight + TREE_CFG.paddingY * 2;
+  canvas.width = W;
+  canvas.height = H;
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  function nodeX(n) { return TREE_CFG.paddingX + n.leafX * TREE_CFG.leafSpacing; }
+  function nodeY(n) { return TREE_CFG.paddingY + n.depth * TREE_CFG.levelHeight; }
+
+  function drawNode(n) {
+    const x = nodeX(n), y = nodeY(n);
+    // Draw lines to children
+    ctx.strokeStyle = "#555";
+    ctx.lineWidth = 1.2;
+    for (const ch of n.children) {
+      ctx.beginPath();
+      ctx.moveTo(x, y + 10);
+      ctx.lineTo(nodeX(ch), nodeY(ch) - 10);
+      ctx.stroke();
+    }
+    // Draw label
+    if (n.terminal) {
+      ctx.font = "italic " + TREE_CFG.fontSize + "px serif";
+      ctx.fillStyle = "#333";
+    } else {
+      ctx.font = "bold " + TREE_CFG.fontSize + "px sans-serif";
+      ctx.fillStyle = "#111";
+    }
+    ctx.fillText(n.label, x, y);
+
+    for (const ch of n.children) drawNode(ch);
+  }
+
+  drawNode(tree);
+}
+
+/* ════════════════════════════════════════
+   Leaderboard
+   ════════════════════════════════════════ */
+function showLeaderboard() {
+  const sorted = state.groups.slice().sort((a, b) => {
+    if (a.completed && !b.completed) return -1;
+    if (!a.completed && b.completed) return 1;
+    if (a.completed && b.completed) return a.turns - b.turns;
+    return b.stageIndex - a.stageIndex || a.turns - b.turns;
+  });
+
+  const body = document.getElementById("lbBody");
+  body.innerHTML = "";
+  sorted.forEach((g, i) => {
+    const statusText = g.completed
+      ? "Summit — " + g.turns + " turns"
+      : STAGES[g.stageIndex].label + " — " + g.turns + " turns";
+    body.innerHTML += '<div class="lb-row">' +
+      '<div class="lb-rank">' + (i + 1) + '</div>' +
+      '<div class="lb-name" style="color:' + g.color + '">' + g.name + '</div>' +
+      '<div class="lb-stat">' + statusText + '</div>' +
+      '</div>';
+  });
+
+  document.getElementById("lbOverlay").classList.remove("hidden");
+}
+
+function closeLB() {
+  document.getElementById("lbOverlay").classList.add("hidden");
+}
+
+/* ════════════════════════════════════════
+   Reset
+   ════════════════════════════════════════ */
+function resetGame() {
+  if (!confirm("Reset game and return to setup?")) return;
+  localStorage.removeItem("proveItMountain");
+  state = null;
+  showSetup();
+}
+
+/* ════════════════════════════════════════
+   Boot
+   ════════════════════════════════════════ */
+initSetup();
+if (loadState()) {
+  showGame();
+} else {
+  showSetup();
+}
 </script>
-
 </body>
 </html>
