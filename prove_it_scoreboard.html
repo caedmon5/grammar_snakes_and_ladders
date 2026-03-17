@@ -221,6 +221,7 @@
     <div class="title">Prove It!</div>
     <div class="group-tabs" id="groupTabs"></div>
     <div class="header-right">
+      <button class="hdr-btn" onclick="addNextGroup()">+ Next Group</button>
       <button class="hdr-btn" onclick="showLeaderboard()">Leaderboard</button>
       <button class="hdr-btn" onclick="resetGame()">Reset</button>
     </div>
@@ -263,31 +264,40 @@ const FUNCTIONS = [
 const TESTS = [
   { name: "Pronominalization",
     desc: "Replace the phrase with a pronoun (he, she, it, they, there, then …). If the sentence stays grammatical with the same meaning, the phrase is a constituent.",
-    example: "The tall man → He" },
+    example: "The tall man → He",
+    proves: ["NP"] },
   { name: "Movement",
     desc: "Move the phrase to the front or another position in the sentence. If the result is grammatical, the phrase is a constituent.",
-    example: "She read the book quickly → Quickly, she read the book" },
+    example: "She read the book quickly → Quickly, she read the book",
+    proves: ["constituency"] },
   { name: "Passivization",
     desc: "Turn the sentence from active to passive voice (or vice versa). If the phrase can become the subject of a passive, it's likely a direct object NP.",
-    example: "The cat caught the mouse → The mouse was caught by the cat" },
+    example: "The cat caught the mouse → The mouse was caught by the cat",
+    proves: ["Direct Object", "Indirect Object", "Prep. Object"] },
   { name: "Coordination",
     desc: "Conjoin the phrase with another phrase of the same type using 'and' or 'or'. If the result is grammatical, both are the same type of constituent.",
-    example: "the big dog and the small cat → both NPs" },
+    example: "the big dog and the small cat → both NPs",
+    proves: ["phrase type (confirms same type)"] },
   { name: "Omission",
     desc: "Remove the phrase from the sentence. If the sentence remains grammatical, the phrase is likely an adjunct/modifier rather than a complement.",
-    example: "She sang beautifully → She sang" },
+    example: "She sang beautifully → She sang",
+    proves: ["VP-Adverbial", "S-Adverbial", "Modifier (if grammatical)", "Complement (if ungrammatical)"] },
   { name: "Agreement",
     desc: "Check whether the phrase triggers subject-verb agreement. If changing its number changes the verb form, it's likely the subject NP.",
-    example: "The dog runs / The dogs run → 'the dog(s)' is the subject" },
+    example: "The dog runs / The dogs run → 'the dog(s)' is the subject",
+    proves: ["Subject", "NP"] },
   { name: "Topicalisation",
     desc: "Move the phrase to the front of the sentence to make it the topic. If grammatical, the phrase is a constituent.",
-    example: "I like this book → This book, I like" },
+    example: "I like this book → This book, I like",
+    proves: ["constituency"] },
   { name: "Do-so replacement",
     desc: "Replace a VP with 'do so'. If the sentence stays grammatical, the replaced part is a VP constituent.",
-    example: "John ate the cake and Mary did so too" },
+    example: "John ate the cake and Mary did so too",
+    proves: ["VP"] },
   { name: "Question formation",
     desc: "Form a question that targets the phrase using who, what, where, when, how. If you can question it, it's a constituent with a specific function.",
-    example: "She saw the cat → What did she see?" },
+    example: "She saw the cat → What did she see?",
+    proves: ["constituency", "function (by question word)"] },
 ];
 
 const SENTENCES = [
@@ -357,26 +367,36 @@ function loadState() {
    Setup screen
    ════════════════════════════════════════ */
 function initSetup() {
+  // No picker needed — just a start button
   const picker = document.getElementById("groupPicker");
   picker.innerHTML = "";
-  for (let n = 3; n <= 6; n++) {
-    const btn = document.createElement("button");
-    btn.className = "group-count-btn";
-    btn.textContent = n;
-    btn.onclick = () => startNewGame(n);
-    picker.appendChild(btn);
-  }
+  const btn = document.createElement("button");
+  btn.className = "group-count-btn";
+  btn.style.width = "auto";
+  btn.style.padding = "16px 32px";
+  btn.style.fontSize = "20px";
+  btn.textContent = "Start Game";
+  btn.onclick = () => startNewGame();
+  picker.appendChild(btn);
 }
 
-function startNewGame(n) {
+function startNewGame() {
   state = {
-    groups: Array.from({ length: n }, (_, i) => newGroupState(i)),
+    groups: [newGroupState(0)],
     activeGroupIndex: 0,
     usedSentences: [],
     view: "game",
   };
   save();
   showGame();
+}
+
+function addNextGroup() {
+  const i = state.groups.length;
+  state.groups.push(newGroupState(i));
+  state.activeGroupIndex = i;
+  save();
+  render();
 }
 
 function showSetup() {
@@ -729,6 +749,7 @@ function renderProveStage(g) {
     '<h3>' + test.name + '</h3>' +
     '<div class="test-desc">' + test.desc + '</div>' +
     '<div class="test-example">Example: ' + test.example + '</div>' +
+    '<div style="margin-top:8px;font-size:13px;color:#4cd9a0;">Can prove: ' + test.proves.join(', ') + '</div>' +
     '</div>';
 
   html += '<div class="tests-used">Tests used this stage: ' + usedCount + ' / ' + TESTS.length + '</div>';
