@@ -734,7 +734,6 @@ function renderIdentifyStage(g) {
 
 /* ── Prove stage ── */
 const PROVE_OUTCOMES = [
-  { key: "not-applicable", label: "Not Applicable", color: "#666" },
   { key: "positive",       label: "Positive",       color: "#1d9e75" },
   { key: "negative",       label: "Negative",       color: "#c0392b" },
 ];
@@ -774,8 +773,8 @@ function renderProveStage(g) {
     html += '<div style="margin-bottom:12px;">';
     html += '<div style="font-size:12px;color:#666;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Evidence so far</div>';
     g.proveHistory.forEach(h => {
-      const color = h.result === "positive" ? "#1d9e75" : h.result === "negative" ? "#c0392b" : "#666";
-      const symbol = h.result === "positive" ? "+" : h.result === "negative" ? "−" : "○";
+      const color = h.result === "positive" ? "#1d9e75" : "#c0392b";
+      const symbol = h.result === "positive" ? "+" : "−";
       html += '<div style="font-size:13px;color:' + color + ';padding:2px 0;">' + symbol + ' ' + h.testName + '</div>';
     });
     html += '</div>';
@@ -813,16 +812,10 @@ function renderProveStage(g) {
         '</div>';
       html += '<button class="override-btn" onclick="proveUndoOutcome()">Undo: change this outcome</button>';
     } else if (g.proveOutcome === "negative") {
-      html += '<div class="identify-feedback incorrect">Negative result — lost a turn.</div>';
+      html += '<div class="identify-feedback incorrect">Negative result.</div>';
       html += '<div class="actions">' +
         '<button class="act-btn btn-correct" onclick="proveClaimDone()">We\'ve Proven It Anyway</button>' +
         '<button class="act-btn btn-tryagain" style="background:#d4880f;" onclick="proveNextTest()">Draw Another Test</button>' +
-        '</div>';
-      html += '<button class="override-btn" onclick="proveUndoOutcome()">Undo: change this outcome</button>';
-    } else if (g.proveOutcome === "not-applicable") {
-      html += '<div class="identify-feedback" style="background:rgba(255,255,255,0.06);border:1px solid #555;color:#aaa;">Test not applicable — draw another.</div>';
-      html += '<div class="actions">' +
-        '<button class="act-btn btn-tryagain" style="background:#666;" onclick="proveNextTestFree()">Draw Another Test (no turn cost)</button>' +
         '</div>';
       html += '<button class="override-btn" onclick="proveUndoOutcome()">Undo: change this outcome</button>';
     }
@@ -958,8 +951,7 @@ function submitProveOutcome(key) {
   const g = activeGroup();
   if (!g.proveHistory) g.proveHistory = [];
   const test = TESTS[g.currentTestIdx];
-  // "not-applicable" doesn't cost a turn; everything else does
-  if (key !== "not-applicable") g.turns++;
+  g.turns++;
   g.proveOutcome = key;
   g.proveHistory.push({ testName: test.name, result: key });
   render();
@@ -998,18 +990,10 @@ function proveNextTest() {
   render();
 }
 
-function proveNextTestFree() {
-  // Draw another test after not-applicable (no turn cost)
-  const g = activeGroup();
-  g.proveOutcome = null;
-  assignRandomTest(g);
-  render();
-}
-
 function proveUndoOutcome() {
   // Undo the last outcome — reverse turn cost and history entry
   const g = activeGroup();
-  if (g.proveOutcome && g.proveOutcome !== "not-applicable") {
+  if (g.proveOutcome) {
     g.turns--; // refund the turn
   }
   if (g.proveHistory && g.proveHistory.length > 0) {
