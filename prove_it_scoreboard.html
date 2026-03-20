@@ -286,10 +286,10 @@ const FUNCTIONS = [
 ];
 
 const TESTS = [
-  { name: "Pronominalization",
-    desc: "Replace the phrase with a pronoun (he, she, it, they, there, then …). If the sentence stays grammatical with the same meaning, the phrase is a constituent.",
-    example: "The tall man → He",
-    proves: ["NP"] },
+  { name: "Proform Substitution",
+    desc: "Replace the phrase with an appropriate proform. Pronoun for NPs (he, she, it, they); proverb for VPs (do so, do the same); proadverb for AdvPs (thus, so); deictic for PPs (here/there, then). If the sentence stays grammatical with the same meaning, the phrase is a constituent.",
+    example: "NP: The tall man → He | VP: ran quickly → did so | AdvP: very quickly → thus | PP: in the garden → there",
+    proves: ["NP", "VP", "AdvP", "PP"] },
   { name: "Movement",
     desc: "Move the phrase to the front or another position in the sentence. If the result is grammatical, the phrase is a constituent.",
     example: "She read the book quickly → Quickly, she read the book",
@@ -325,13 +325,13 @@ const TESTS = [
 ];
 
 const SENTENCES = [
-  { sentence: "The students found the answer.", phrase: "the answer", phraseType: "NP", function: "Direct Object", difficulty: 1, notes: "Pronominalize: found it. Passivize: The answer was found." },
+  { sentence: "The students found the answer.", phrase: "the answer", phraseType: "NP", function: "Direct Object", difficulty: 1, notes: "Substitute proform: found it. Passivize: The answer was found." },
   { sentence: "She left quickly.", phrase: "quickly", phraseType: "AdvP", function: "VP-Adverbial", difficulty: 1, notes: "Omit: She left. Still grammatical → optional → adverbial." },
   { sentence: "The old cat slept on the mat.", phrase: "on the mat", phraseType: "PP", function: "VP-Adverbial", difficulty: 1, notes: "Omit: The old cat slept. Still grammatical → adverbial. Cannot passivize: *The mat was slept on." },
   { sentence: "They seemed very happy.", phrase: "very happy", phraseType: "AdjP", function: "Subject Predicate", difficulty: 1, notes: "Cannot omit: *They seemed. Cannot passivize. Describes the subject they." },
   { sentence: "He gave her the book.", phrase: "her", phraseType: "NP", function: "Indirect Object", difficulty: 1, notes: "Passivize: She was given the book. Can rephrase with to: gave the book to her." },
   { sentence: "The rabbit planted carrots.", phrase: "The rabbit", phraseType: "NP", function: "Subject", difficulty: 1, notes: "Agreement: The rabbits planted carrots (verb changes). Tag: …didn't it?" },
-  { sentence: "The pig from Mars left relatively early.", phrase: "from Mars", phraseType: "PP", function: "Modifier (inside NP)", difficulty: 2, notes: "Modifies pig, not the VP. Pronominalize the whole NP: It left. The PP is part of the NP, not a separate adverbial." },
+  { sentence: "The pig from Mars left relatively early.", phrase: "from Mars", phraseType: "PP", function: "Modifier (inside NP)", difficulty: 2, notes: "Modifies pig, not the VP. Substitute proform for the whole NP: It left. The PP is part of the NP, not a separate adverbial." },
   { sentence: "Fortunately, she found it easily.", phrase: "Fortunately", phraseType: "AdvP", function: "S-Adverbial", difficulty: 2, notes: "Omit: She found it easily. Still grammatical. Expresses speaker's attitude about the whole sentence, not the VP." },
   { sentence: "He referred to that article.", phrase: "to that article", phraseType: "PP", function: "Prepositional Object", difficulty: 2, notes: "Cannot omit: *He referred. Passivize: That article was referred to. → object, not adverbial." },
   { sentence: "The students considered the problem difficult.", phrase: "difficult", phraseType: "AdjP", function: "Object Predicate", difficulty: 2, notes: "Cannot omit: *The students considered the problem. Describes the object the problem." },
