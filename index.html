@@ -136,6 +136,25 @@
   .test-card .test-example { font-size: 14px; color: #999; margin-top: 8px; font-style: italic; }
   .tests-used { font-size: 13px; color: #666; margin-top: 8px; }
 
+  /* ── Prove input ── */
+  .prove-input-area { margin: 12px 0; }
+  .prove-input-area label { font-size: 14px; color: #999; display: block; margin-bottom: 6px; }
+  .prove-input-area textarea {
+    width: 100%; height: 60px; border-radius: 8px; border: 1px solid #444;
+    background: #111; color: #eee; padding: 10px; font-size: 15px; resize: vertical;
+  }
+  .prove-input-area textarea:focus { outline: none; border-color: #e8c547; }
+
+  /* ── Auto-check feedback ── */
+  .auto-check-banner {
+    padding: 12px 16px; border-radius: 8px; margin-bottom: 12px;
+    font-size: 14px; font-weight: 600;
+  }
+  .auto-check-banner.proven { background: rgba(29,158,117,0.15); border: 1px solid #1d9e75; color: #4cd9a0; }
+  .auto-check-banner.not-proven { background: rgba(232,197,71,0.1); border: 1px solid rgba(232,197,71,0.4); color: #e8c547; }
+  .auto-check-banner.outcome-correct { background: rgba(29,158,117,0.1); border: 1px solid rgba(29,158,117,0.4); color: #4cd9a0; }
+  .auto-check-banner.outcome-incorrect { background: rgba(192,57,43,0.1); border: 1px solid rgba(192,57,43,0.4); color: #e88; }
+
   /* ── Tree drawing ── */
   .tree-input-area { margin-bottom: 12px; }
   .tree-input-area label { font-size: 14px; color: #999; display: block; margin-bottom: 6px; }
@@ -285,43 +304,127 @@ const FUNCTIONS = [
   "Modifier", "Complement", "Head"
 ];
 
-const TESTS = [
-  { name: "Proform Substitution",
-    desc: "Replace the phrase with an appropriate proform. Pronoun for NPs (he, she, it, they); proverb for VPs (do so, do the same); proadverb for AdvPs (thus, so); deictic for PPs (here/there, then). If the sentence stays grammatical with the same meaning, the phrase is a constituent.",
-    example: "NP: The tall man → He | VP: ran quickly → did so | AdvP: very quickly → thus | PP: in the garden → there",
-    proves: ["NP", "VP", "AdvP", "PP"] },
-  { name: "Movement",
-    desc: "Move the phrase to the front or another position in the sentence. If the result is grammatical, the phrase is a constituent.",
-    example: "She read the book quickly → Quickly, she read the book",
-    proves: ["constituency"] },
-  { name: "Passivization",
-    desc: "Turn the sentence from active to passive voice (or vice versa). If the phrase can become the subject of a passive, it's likely a direct object NP.",
-    example: "The cat caught the mouse → The mouse was caught by the cat",
-    proves: ["Direct Object", "Indirect Object", "Prep. Object"] },
-  { name: "Coordination",
-    desc: "Conjoin the phrase with another phrase of the same type using 'and' or 'or'. If the result is grammatical, both are the same type of constituent.",
-    example: "the big dog and the small cat → both NPs",
-    proves: ["phrase type (confirms same type)"] },
-  { name: "Omission",
-    desc: "Remove the phrase from the sentence. If the sentence remains grammatical, the phrase is likely an adjunct/modifier rather than a complement.",
-    example: "She sang beautifully → She sang",
-    proves: ["VP-Adverbial", "S-Adverbial", "Modifier (if grammatical)", "Complement (if ungrammatical)"] },
-  { name: "Agreement",
-    desc: "Check whether the phrase triggers subject-verb agreement. If changing its number changes the verb form, it's likely the subject NP.",
-    example: "The dog runs / The dogs run → 'the dog(s)' is the subject",
-    proves: ["Subject", "NP"] },
-  { name: "Topicalisation",
-    desc: "Move the phrase to the front of the sentence to make it the topic. If grammatical, the phrase is a constituent.",
-    example: "I like this book → This book, I like",
-    proves: ["constituency"] },
-  { name: "Do-so replacement",
-    desc: "Replace a VP with 'do so'. If the sentence stays grammatical, the replaced part is a VP constituent.",
+const PHRASE_TESTS = [
+  { name: "Pronoun Substitution",
+    desc: "Replace the phrase with a pronoun (he, she, it, they). If the sentence stays grammatical with the same meaning, the phrase is an NP.",
+    example: "The tall man left → He left",
+    expectedOutcome: { NP: "positive", VP: "negative", AdjP: "negative", AdvP: "negative", PP: "negative" },
+    proves: {
+      positive: { conclusive: ["NP"], narrowsTo: [] },
+      negative: { conclusive: [], narrowsTo: ["VP","AdjP","AdvP","PP"] }
+    }
+  },
+  { name: "Do-so Replacement",
+    desc: "Replace the phrase with 'do so' or 'do the same'. If the sentence stays grammatical, the phrase is a VP.",
     example: "John ate the cake and Mary did so too",
-    proves: ["VP"] },
-  { name: "Question formation",
-    desc: "Form a question that targets the phrase using who, what, where, when, how. If you can question it, it's a constituent with a specific function.",
-    example: "She saw the cat → What did she see?",
-    proves: ["constituency", "function (by question word)"] },
+    expectedOutcome: { NP: "negative", VP: "positive", AdjP: "negative", AdvP: "negative", PP: "negative" },
+    proves: {
+      positive: { conclusive: ["VP"], narrowsTo: [] },
+      negative: { conclusive: [], narrowsTo: ["NP","AdjP","AdvP","PP"] }
+    }
+  },
+  { name: "Proadverb Substitution",
+    desc: "Replace the phrase with a proadverb (thus, so). If the sentence stays grammatical with the same meaning, the phrase is an AdvP.",
+    example: "She ran very quickly → She ran thus",
+    expectedOutcome: { NP: "negative", VP: "negative", AdjP: "negative", AdvP: "positive", PP: "negative" },
+    proves: {
+      positive: { conclusive: ["AdvP"], narrowsTo: [] },
+      negative: { conclusive: [], narrowsTo: ["NP","VP","AdjP","PP"] }
+    }
+  },
+  { name: "Deictic PP Substitution",
+    desc: "Replace the phrase with a deictic expression (here, there, then). If the sentence stays grammatical, the phrase is a PP.",
+    example: "She sat in the garden → She sat there",
+    expectedOutcome: { NP: "negative", VP: "negative", AdjP: "negative", AdvP: "negative", PP: "positive" },
+    proves: {
+      positive: { conclusive: ["PP"], narrowsTo: [] },
+      negative: { conclusive: [], narrowsTo: ["NP","VP","AdjP","AdvP"] }
+    }
+  },
+  { name: "Degree Modification",
+    desc: "Try adding a degree modifier (very, extremely) before the phrase. If grammatical, the phrase is likely an AdjP or AdvP.",
+    example: "She is happy → She is very happy | He ran quickly → He ran very quickly",
+    expectedOutcome: { NP: "negative", VP: "negative", AdjP: "positive", AdvP: "positive", PP: "negative" },
+    proves: {
+      positive: { conclusive: [], narrowsTo: ["AdjP","AdvP"] },
+      negative: { conclusive: [], narrowsTo: ["NP","VP","PP"] }
+    }
+  },
+  { name: "Coordination",
+    desc: "Conjoin the phrase with another phrase of the same type using 'and' or 'or'. If grammatical, both are the same type of constituent.",
+    example: "the big dog and the small cat → both NPs",
+    expectedOutcome: { NP: "positive", VP: "positive", AdjP: "positive", AdvP: "positive", PP: "positive" },
+    proves: {
+      positive: { conclusive: [], narrowsTo: [] },
+      negative: { conclusive: [], narrowsTo: [] }
+    }
+  },
+];
+
+const FUNCTION_TESTS = [
+  { name: "Passivization",
+    desc: "Turn the sentence from active to passive voice. If the phrase becomes the subject of the passive, it is the direct object.",
+    example: "The cat caught the mouse → The mouse was caught by the cat",
+    expectedOutcome: { "Subject": "negative", "Direct Object": "positive", "Indirect Object": "negative", "Prep. Object": "negative", "Subject Predicate": "negative", "Object Predicate": "negative", "VP-Adverbial": "negative", "S-Adverbial": "negative", "Modifier": "negative", "Complement": "negative", "Head": "negative" },
+    proves: {
+      positive: { conclusive: ["Direct Object"], narrowsTo: [] },
+      negative: { conclusive: [], narrowsTo: ["Subject","Indirect Object","Prep. Object","Subject Predicate","Object Predicate","VP-Adverbial","S-Adverbial","Modifier","Complement","Head"] }
+    }
+  },
+  { name: "Agreement",
+    desc: "Change the number of the phrase (singular↔plural). If the verb form changes to match, the phrase is the subject.",
+    example: "The dog runs → The dogs run — verb changes, so 'the dog(s)' is the subject",
+    expectedOutcome: { "Subject": "positive", "Direct Object": "negative", "Indirect Object": "negative", "Prep. Object": "negative", "Subject Predicate": "negative", "Object Predicate": "negative", "VP-Adverbial": "negative", "S-Adverbial": "negative", "Modifier": "negative", "Complement": "negative", "Head": "negative" },
+    proves: {
+      positive: { conclusive: ["Subject"], narrowsTo: [] },
+      negative: { conclusive: [], narrowsTo: ["Direct Object","Indirect Object","Prep. Object","Subject Predicate","Object Predicate","VP-Adverbial","S-Adverbial","Modifier","Complement","Head"] }
+    }
+  },
+  { name: "Omission",
+    desc: "Remove the phrase from the sentence. If still grammatical, the phrase is likely an adjunct (adverbial/modifier) rather than a complement.",
+    example: "She sang beautifully → She sang (grammatical → adverbial)",
+    expectedOutcome: { "Subject": "negative", "Direct Object": "negative", "Indirect Object": "negative", "Prep. Object": "negative", "Subject Predicate": "negative", "Object Predicate": "negative", "VP-Adverbial": "positive", "S-Adverbial": "positive", "Modifier": "positive", "Complement": "negative", "Head": "negative" },
+    proves: {
+      positive: { conclusive: [], narrowsTo: ["VP-Adverbial","S-Adverbial","Modifier"] },
+      negative: { conclusive: [], narrowsTo: ["Subject","Direct Object","Indirect Object","Prep. Object","Subject Predicate","Object Predicate","Complement","Head"] }
+    }
+  },
+  { name: "Who/What Question",
+    desc: "Form a who/what question targeting the phrase. If you can question it with who or what, the phrase is likely a subject, direct object, or indirect object.",
+    example: "She saw the cat → What did she see? (the cat = direct object)",
+    expectedOutcome: { "Subject": "positive", "Direct Object": "positive", "Indirect Object": "positive", "Prep. Object": "negative", "Subject Predicate": "negative", "Object Predicate": "negative", "VP-Adverbial": "negative", "S-Adverbial": "negative", "Modifier": "negative", "Complement": "negative", "Head": "negative" },
+    proves: {
+      positive: { conclusive: [], narrowsTo: ["Subject","Direct Object","Indirect Object"] },
+      negative: { conclusive: [], narrowsTo: [] }
+    }
+  },
+  { name: "Where/When/How Question",
+    desc: "Form a where, when, or how question targeting the phrase. If you can question it this way, the phrase is likely an adverbial.",
+    example: "She left quickly → How did she leave? (quickly = VP-adverbial)",
+    expectedOutcome: { "Subject": "negative", "Direct Object": "negative", "Indirect Object": "negative", "Prep. Object": "negative", "Subject Predicate": "negative", "Object Predicate": "negative", "VP-Adverbial": "positive", "S-Adverbial": "positive", "Modifier": "negative", "Complement": "negative", "Head": "negative" },
+    proves: {
+      positive: { conclusive: [], narrowsTo: ["VP-Adverbial","S-Adverbial"] },
+      negative: { conclusive: [], narrowsTo: [] }
+    }
+  },
+  { name: "Predicate Check",
+    desc: "Does the phrase describe a property of the subject or the object? If it describes the subject after a linking verb, it's a subject predicate. If it describes the object, it's an object predicate.",
+    example: "They seemed happy → happy describes the subject (subject predicate) | They considered him foolish → foolish describes the object (object predicate)",
+    expectedOutcome: { "Subject": "negative", "Direct Object": "negative", "Indirect Object": "negative", "Prep. Object": "negative", "Subject Predicate": "positive", "Object Predicate": "positive", "VP-Adverbial": "negative", "S-Adverbial": "negative", "Modifier": "negative", "Complement": "negative", "Head": "negative" },
+    proves: {
+      positive: { conclusive: [], narrowsTo: ["Subject Predicate","Object Predicate"] },
+      negative: { conclusive: [], narrowsTo: [] }
+    }
+  },
+  { name: "Dative Alternation",
+    desc: "Try rephrasing with 'to' or 'for'. If you can say 'V NP to/for NP' ↔ 'V NP NP', the phrase is the indirect object.",
+    example: "He gave her the book → He gave the book to her (her = indirect object)",
+    expectedOutcome: { "Subject": "negative", "Direct Object": "negative", "Indirect Object": "positive", "Prep. Object": "negative", "Subject Predicate": "negative", "Object Predicate": "negative", "VP-Adverbial": "negative", "S-Adverbial": "negative", "Modifier": "negative", "Complement": "negative", "Head": "negative" },
+    proves: {
+      positive: { conclusive: ["Indirect Object"], narrowsTo: [] },
+      negative: { conclusive: [], narrowsTo: ["Subject","Direct Object","Prep. Object","Subject Predicate","Object Predicate","VP-Adverbial","S-Adverbial","Modifier","Complement","Head"] }
+    }
+  },
 ];
 
 const SENTENCES = [
@@ -333,7 +436,7 @@ const SENTENCES = [
   { sentence: "The rabbit planted carrots.", phrase: "The rabbit", phraseType: "NP", function: "Subject", difficulty: 1, notes: "Agreement: The rabbits planted carrots (verb changes). Tag: …didn't it?" },
   { sentence: "The pig from Mars left relatively early.", phrase: "from Mars", phraseType: "PP", function: "Modifier (inside NP)", difficulty: 2, notes: "Modifies pig, not the VP. Substitute proform for the whole NP: It left. The PP is part of the NP, not a separate adverbial." },
   { sentence: "Fortunately, she found it easily.", phrase: "Fortunately", phraseType: "AdvP", function: "S-Adverbial", difficulty: 2, notes: "Omit: She found it easily. Still grammatical. Expresses speaker's attitude about the whole sentence, not the VP." },
-  { sentence: "He referred to that article.", phrase: "to that article", phraseType: "PP", function: "Prepositional Object", difficulty: 2, notes: "Cannot omit: *He referred. Passivize: That article was referred to. → object, not adverbial." },
+  { sentence: "He referred to that article.", phrase: "to that article", phraseType: "PP", function: "Prep. Object", difficulty: 2, notes: "Cannot omit: *He referred. Passivize: That article was referred to. → object, not adverbial." },
   { sentence: "The students considered the problem difficult.", phrase: "difficult", phraseType: "AdjP", function: "Object Predicate", difficulty: 2, notes: "Cannot omit: *The students considered the problem. Describes the object the problem." },
   { sentence: "A very curious red book was found.", phrase: "very curious", phraseType: "AdjP", function: "Modifier (inside NP)", difficulty: 2, notes: "Modifies the head noun book. Coordinate: A very curious and extremely old book. Sister to N'." },
   { sentence: "Wisely, they left before dark.", phrase: "Wisely", phraseType: "AdvP", function: "S-Adverbial", difficulty: 2, notes: "Two readings: (1) they were wise to leave (S-adv) or (2) they left in a wise manner (VP-adv). Sentence-initial + comma → S-adverbial." },
@@ -359,12 +462,15 @@ function newGroupState(i) {
     stageIndex: 0,
     turns: 0,
     currentTestIdx: null,
-    testsUsed: [],
+    phraseTestsUsed: [],
+    funcTestsUsed: [],
     bracketInput: "",
     sentenceIdx: null,
     lastAnswer: null,
     lastAnswerCorrect: null,
     proveOutcome: null,
+    proveOutcomeCorrect: null,
+    proveInput: "",
     proveClaimed: false,
     proveHistory: [],
     committedPhraseType: null,
@@ -385,7 +491,22 @@ function save() {
 function loadState() {
   try {
     const d = JSON.parse(localStorage.getItem("proveItMountain"));
-    if (d && d.groups && d.groups.length) { state = d; return true; }
+    if (d && d.groups && d.groups.length) {
+      // Migrate old state fields
+      d.groups.forEach(g => {
+        if (g.testsUsed && !g.phraseTestsUsed) {
+          g.phraseTestsUsed = [];
+          g.funcTestsUsed = [];
+          delete g.testsUsed;
+        }
+        if (!g.phraseTestsUsed) g.phraseTestsUsed = [];
+        if (!g.funcTestsUsed) g.funcTestsUsed = [];
+        if (g.proveInput === undefined) g.proveInput = "";
+        if (g.proveOutcomeCorrect === undefined) g.proveOutcomeCorrect = null;
+      });
+      state = d;
+      return true;
+    }
   } catch(e) {}
   return false;
 }
@@ -665,7 +786,18 @@ function renderStage() {
 
   c.innerHTML = html;
 
-  // Post-render hooks — restore focus to phrase input if it was focused
+  // Post-render hooks
+  if (stage.type === "prove") {
+    const pta = document.getElementById("proveInput");
+    if (pta) {
+      pta.value = g.proveInput || "";
+      pta.addEventListener("input", onProveInput);
+      // Restore focus if there was already input
+      if (document.activeElement === null || document.activeElement === document.body) {
+        pta.focus();
+      }
+    }
+  }
   if (stage.type === "tree") {
     const ta = document.getElementById("bracketInput");
     if (ta) {
@@ -748,8 +880,10 @@ function renderProveStage(g) {
     save();
   }
 
-  const test = TESTS[g.currentTestIdx];
-  const usedCount = g.testsUsed.length;
+  const pool = getTestPool(g);
+  const test = pool[g.currentTestIdx];
+  const usedArray = getUsedArray(g);
+  const usedCount = usedArray.length;
 
   const isProvePhrase = g.stageIndex === 1;
   const claimLabel = isProvePhrase ? g.committedPhraseType : g.committedFunction;
@@ -773,15 +907,34 @@ function renderProveStage(g) {
     html += '<div style="margin-bottom:12px;">';
     html += '<div style="font-size:12px;color:#666;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Evidence so far</div>';
     g.proveHistory.forEach(h => {
-      const color = h.result === "positive" ? "#1d9e75" : "#c0392b";
-      const symbol = h.result === "positive" ? "+" : "−";
-      html += '<div style="font-size:13px;color:' + color + ';padding:2px 0;">' + symbol + ' ' + h.testName + '</div>';
+      const outcomeColor = h.result === "positive" ? "#1d9e75" : "#c0392b";
+      const symbol = h.result === "positive" ? "+" : "\u2212";
+      let checkMark = "";
+      if (h.correct === true) checkMark = ' <span style="color:#4cd9a0;">\u2713</span>';
+      else if (h.correct === false) checkMark = ' <span style="color:#e88;">\u2717</span>';
+      html += '<div style="font-size:13px;color:' + outcomeColor + ';padding:2px 0;">' + symbol + ' ' + h.testName + checkMark;
+      if (h.studentInput) html += ' <span style="color:#666;font-style:italic;font-size:12px;">— "' + h.studentInput.replace(/</g, '&lt;').substring(0, 60) + '"</span>';
+      html += '</div>';
     });
     html += '</div>';
   }
 
-  // If students claimed "proven" — show confirmation for instructor
+  // If students claimed "proven" — show auto-check + confirmation for instructor
   if (g.proveClaimed) {
+    const conclusiveness = checkConclusive(g);
+    if (conclusiveness.proven) {
+      html += '<div class="auto-check-banner proven">Auto-check: Proven! (' + conclusiveness.reason +
+        (conclusiveness.testName ? ' via ' + conclusiveness.testName : '') + ')</div>';
+    } else {
+      let msg = 'Auto-check: Not yet proven by the evidence.';
+      if (conclusiveness.remaining.length > 0) {
+        msg += ' Remaining possibilities: ' + conclusiveness.remaining.join(', ') + '.';
+      }
+      if (conclusiveness.reason === "ambiguous") {
+        msg = 'Auto-check skipped: sentence is ambiguous — instructor judgment required.';
+      }
+      html += '<div class="auto-check-banner not-proven">' + msg + '</div>';
+    }
     html += '<div class="test-card" style="border-color:#e8c547;background:rgba(232,197,71,0.08);">' +
       '<h3 style="color:#e8c547;">Group claims: Proven!</h3>' +
       '<div class="test-desc" style="color:#bbb;">They believe they have enough evidence. Do you agree?</div>' +
@@ -797,51 +950,65 @@ function renderProveStage(g) {
     '<h3>' + test.name + '</h3>' +
     '<div class="test-desc">' + test.desc + '</div>' +
     '<div class="test-example">Example: ' + test.example + '</div>' +
-    '<div style="margin-top:8px;font-size:13px;color:#4cd9a0;">Can prove: ' + test.proves.join(', ') + '</div>' +
     '</div>';
 
-  html += '<div class="tests-used">Tests used this stage: ' + usedCount + ' / ' + TESTS.length + '</div>';
+  html += '<div class="tests-used">Tests used this stage: ' + usedCount + ' / ' + pool.length + '</div>';
 
   // Show feedback if outcome was just chosen
   if (g.proveOutcome !== null && g.proveOutcome !== undefined) {
     if (g.proveOutcome === "positive") {
       html += '<div class="identify-feedback correct">Positive result.</div>';
-      html += '<div class="actions">' +
-        '<button class="act-btn btn-correct" onclick="proveClaimDone()">We\'ve Proven It</button>' +
-        '<button class="act-btn btn-tryagain" style="background:#d4880f;" onclick="proveNextTest()">Draw Another Test</button>' +
-        '</div>';
-      html += '<button class="override-btn" onclick="proveUndoOutcome()">Undo: change this outcome</button>';
-    } else if (g.proveOutcome === "negative") {
+    } else {
       html += '<div class="identify-feedback incorrect">Negative result.</div>';
-      html += '<div class="actions">' +
-        '<button class="act-btn btn-correct" onclick="proveClaimDone()">We\'ve Proven It Anyway</button>' +
-        '<button class="act-btn btn-tryagain" style="background:#d4880f;" onclick="proveNextTest()">Draw Another Test</button>' +
-        '</div>';
-      html += '<button class="override-btn" onclick="proveUndoOutcome()">Undo: change this outcome</button>';
     }
+    // Auto-check feedback
+    if (g.proveOutcomeCorrect === true) {
+      html += '<div class="auto-check-banner outcome-correct">Auto-check: Outcome looks correct.</div>';
+    } else if (g.proveOutcomeCorrect === false) {
+      html += '<div class="auto-check-banner outcome-incorrect">Auto-check: Outcome may be incorrect — double-check the transformation.</div>';
+    }
+    html += '<div class="actions">' +
+      '<button class="act-btn btn-correct" onclick="proveClaimDone()">We\'ve Proven It</button>' +
+      '<button class="act-btn btn-tryagain" style="background:#d4880f;" onclick="proveNextTest()">Draw Another Test</button>' +
+      '</div>';
+    html += '<button class="override-btn" onclick="proveUndoOutcome()">Undo: change this outcome</button>';
     return html;
   }
 
-  // Outcome buttons
+  // Student text input
+  html += '<div class="prove-input-area">' +
+    '<label>Type the transformed sentence showing you applied this test:</label>' +
+    '<textarea id="proveInput" placeholder="Type your transformed sentence here\u2026" spellcheck="false"></textarea>' +
+    '</div>';
+
+  // Outcome buttons — hidden until input provided
+  const hasInput = g.proveInput && g.proveInput.trim().length > 0;
   html += '<div style="font-size:14px;color:#999;margin:14px 0 8px;">What was the result of this test?</div>';
-  html += '<div class="ref-chips">';
+  html += '<div class="ref-chips" id="proveOutcomeButtons" style="' + (hasInput ? '' : 'opacity:0.3;pointer-events:none;') + '">';
   PROVE_OUTCOMES.forEach(o => {
     html += '<div class="ref-chip" style="border-color:' + o.color + ';color:' + o.color + ';" onclick="submitProveOutcome(\'' + o.key + '\')">' + o.label + '</div>';
   });
   html += '</div>';
+  if (!hasInput) {
+    html += '<div style="font-size:12px;color:#666;margin-top:4px;">Enter your transformation above to unlock the outcome buttons.</div>';
+  }
   return html;
 }
 
 function assignRandomTest(g) {
-  const available = TESTS.map((_, i) => i).filter(i => !g.testsUsed.includes(i));
+  const pool = getTestPool(g);
+  const usedArray = getUsedArray(g);
+  const available = pool.map((_, i) => i).filter(i => !usedArray.includes(i));
   if (available.length === 0) {
     // Reset pool
-    g.testsUsed = [];
+    if (g.stageIndex === 1) g.phraseTestsUsed = [];
+    else g.funcTestsUsed = [];
     return assignRandomTest(g);
   }
   const pick = available[Math.floor(Math.random() * available.length)];
   g.currentTestIdx = pick;
-  if (!g.testsUsed.includes(pick)) g.testsUsed.push(pick);
+  usedArray.push(pick);
+  g.proveInput = "";
 }
 
 /* ── Tree stage ── */
@@ -865,10 +1032,81 @@ function renderTreeStage(g) {
    ════════════════════════════════════════ */
 function activeGroup() { return state.groups[state.activeGroupIndex]; }
 
+function normalizeFunction(fn) {
+  // "Complement (inside NP)" → "Complement", "Modifier (inside NP)" → "Modifier", etc.
+  if (!fn) return fn;
+  return fn.replace(/\s*\(.*\)$/, "");
+}
+
+function getTestPool(g) {
+  return g.stageIndex === 1 ? PHRASE_TESTS : FUNCTION_TESTS;
+}
+
+function getUsedArray(g) {
+  return g.stageIndex === 1 ? g.phraseTestsUsed : g.funcTestsUsed;
+}
+
+function getCorrectAnswer(g) {
+  const s = SENTENCES[g.sentenceIdx];
+  if (!s) return null;
+  return g.stageIndex === 1 ? s.phraseType : normalizeFunction(s.function);
+}
+
+function checkOutcome(g, chosenOutcome) {
+  const correctAnswer = getCorrectAnswer(g);
+  if (!correctAnswer || correctAnswer === "AMBIGUOUS") return null;
+  const pool = getTestPool(g);
+  const test = pool[g.currentTestIdx];
+  if (!test || !test.expectedOutcome) return null;
+  const expected = test.expectedOutcome[correctAnswer];
+  if (!expected) return null;
+  return chosenOutcome === expected;
+}
+
+function checkConclusive(g) {
+  const correctAnswer = getCorrectAnswer(g);
+  if (!correctAnswer || correctAnswer === "AMBIGUOUS") return { proven: false, reason: "ambiguous", remaining: [] };
+  const pool = getTestPool(g);
+
+  // Check for a single conclusive test
+  for (const h of g.proveHistory) {
+    if (!h.correct) continue;
+    const test = pool.find(t => t.name === h.testName);
+    if (!test) continue;
+    const branch = test.proves[h.result];
+    if (branch && branch.conclusive && branch.conclusive.includes(correctAnswer)) {
+      return { proven: true, reason: "conclusive", testName: h.testName };
+    }
+  }
+
+  // Try narrowing: start with all possibilities, intersect narrowsTo sets
+  const isPhrase = g.stageIndex === 1;
+  let remaining = isPhrase ? PHRASE_TYPES.slice() : FUNCTIONS.map(f => normalizeFunction(f));
+  // Remove duplicates from normalized functions
+  remaining = [...new Set(remaining)];
+
+  let anyNarrowing = false;
+  for (const h of g.proveHistory) {
+    if (!h.correct) continue;
+    const test = pool.find(t => t.name === h.testName);
+    if (!test) continue;
+    const branch = test.proves[h.result];
+    if (branch && branch.narrowsTo && branch.narrowsTo.length > 0) {
+      remaining = remaining.filter(r => branch.narrowsTo.includes(r));
+      anyNarrowing = true;
+    }
+  }
+
+  if (anyNarrowing && remaining.length === 1 && remaining[0] === correctAnswer) {
+    return { proven: true, reason: "narrowed", remaining };
+  }
+
+  return { proven: false, reason: "insufficient", remaining: anyNarrowing ? remaining : [] };
+}
+
 function advanceStage() {
   const g = activeGroup();
   g.currentTestIdx = null;
-  g.testsUsed = [];
   g.bracketInput = "";
   // Preserve prove history before clearing
   if (g.stageIndex === 1 && g.proveHistory && g.proveHistory.length > 0) {
@@ -880,6 +1118,8 @@ function advanceStage() {
   g.lastAnswer = null;
   g.lastAnswerCorrect = null;
   g.proveOutcome = null;
+  g.proveOutcomeCorrect = null;
+  g.proveInput = "";
   g.proveClaimed = false;
   g.proveHistory = [];
   if (g.stageIndex < 4) {
@@ -950,10 +1190,18 @@ function clearAnswer() {
 function submitProveOutcome(key) {
   const g = activeGroup();
   if (!g.proveHistory) g.proveHistory = [];
-  const test = TESTS[g.currentTestIdx];
+  const pool = getTestPool(g);
+  const test = pool[g.currentTestIdx];
+  const outcomeCorrect = checkOutcome(g, key);
   g.turns++;
   g.proveOutcome = key;
-  g.proveHistory.push({ testName: test.name, result: key });
+  g.proveOutcomeCorrect = outcomeCorrect;
+  g.proveHistory.push({
+    testName: test.name,
+    result: key,
+    correct: outcomeCorrect,
+    studentInput: g.proveInput || ""
+  });
   render();
 }
 
@@ -978,6 +1226,8 @@ function proveRejectClaim() {
   g.turns++;
   g.proveClaimed = false;
   g.proveOutcome = null;
+  g.proveOutcomeCorrect = null;
+  g.proveInput = "";
   assignRandomTest(g);
   render();
 }
@@ -986,6 +1236,8 @@ function proveNextTest() {
   // Draw another test (turn already counted)
   const g = activeGroup();
   g.proveOutcome = null;
+  g.proveOutcomeCorrect = null;
+  g.proveInput = "";
   assignRandomTest(g);
   render();
 }
@@ -1000,6 +1252,7 @@ function proveUndoOutcome() {
     g.proveHistory.pop();
   }
   g.proveOutcome = null;
+  g.proveOutcomeCorrect = null;
   render();
 }
 
@@ -1023,6 +1276,19 @@ function drawSentenceCard() {
   g.sentenceIdx = pick;
   state.usedSentences.push(pick);
   render();
+}
+
+function onProveInput(e) {
+  const g = activeGroup();
+  g.proveInput = e.target.value;
+  save();
+  // Toggle outcome buttons visibility without full re-render
+  const btns = document.getElementById("proveOutcomeButtons");
+  if (btns) {
+    const hasInput = g.proveInput.trim().length > 0;
+    btns.style.opacity = hasInput ? "1" : "0.3";
+    btns.style.pointerEvents = hasInput ? "auto" : "none";
+  }
 }
 
 function onBracketInput(e) {
@@ -1231,8 +1497,13 @@ function renderReviewStage(g, si) {
       html += '<div class="review-item"><span class="review-label">Evidence:</span></div>';
       g.provePhraseFinalHistory.forEach(h => {
         const color = h.result === "positive" ? "#1d9e75" : h.result === "negative" ? "#c0392b" : "#666";
-        const symbol = h.result === "positive" ? "+" : h.result === "negative" ? "−" : "○";
-        html += '<div style="font-size:14px;color:' + color + ';padding:2px 0 2px 16px;">' + symbol + ' ' + h.testName + '</div>';
+        const symbol = h.result === "positive" ? "+" : h.result === "negative" ? "\u2212" : "\u25CB";
+        let checkMark = "";
+        if (h.correct === true) checkMark = ' <span style="color:#4cd9a0;">\u2713</span>';
+        else if (h.correct === false) checkMark = ' <span style="color:#e88;">\u2717</span>';
+        html += '<div style="font-size:14px;color:' + color + ';padding:2px 0 2px 16px;">' + symbol + ' ' + h.testName + checkMark;
+        if (h.studentInput) html += ' <span style="color:#666;font-style:italic;font-size:12px;">— "' + h.studentInput.replace(/</g, '&lt;').substring(0, 80) + '"</span>';
+        html += '</div>';
       });
     }
   } else if (si === 2) {
@@ -1251,8 +1522,13 @@ function renderReviewStage(g, si) {
       html += '<div class="review-item"><span class="review-label">Evidence:</span></div>';
       g.proveFuncFinalHistory.forEach(h => {
         const color = h.result === "positive" ? "#1d9e75" : h.result === "negative" ? "#c0392b" : "#666";
-        const symbol = h.result === "positive" ? "+" : h.result === "negative" ? "−" : "○";
-        html += '<div style="font-size:14px;color:' + color + ';padding:2px 0 2px 16px;">' + symbol + ' ' + h.testName + '</div>';
+        const symbol = h.result === "positive" ? "+" : h.result === "negative" ? "\u2212" : "\u25CB";
+        let checkMark = "";
+        if (h.correct === true) checkMark = ' <span style="color:#4cd9a0;">\u2713</span>';
+        else if (h.correct === false) checkMark = ' <span style="color:#e88;">\u2717</span>';
+        html += '<div style="font-size:14px;color:' + color + ';padding:2px 0 2px 16px;">' + symbol + ' ' + h.testName + checkMark;
+        if (h.studentInput) html += ' <span style="color:#666;font-style:italic;font-size:12px;">— "' + h.studentInput.replace(/</g, '&lt;').substring(0, 80) + '"</span>';
+        html += '</div>';
       });
     }
   } else if (si === 4) {
