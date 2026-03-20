@@ -147,9 +147,10 @@
   .tree-input-area textarea:focus { outline: none; border-color: #e8c547; }
   .canvas-wrap {
     border: 1px solid #333; border-radius: 8px; background: #fff;
-    min-height: 120px;
+    min-height: 60px; overflow-x: auto; display: inline-block;
+    min-width: 100%; box-sizing: border-box;
   }
-  .canvas-wrap canvas { display: block; width: 100%; height: auto; }
+  .canvas-wrap canvas { display: block; }
   .parse-error { color: #e74c3c; font-size: 13px; margin-top: 4px; min-height: 18px; }
 
   /* ── Sentence card display ── */
@@ -1111,11 +1112,11 @@ function parseBrackets(input) {
    Tree renderer (Canvas)
    ════════════════════════════════════════ */
 const TREE_CFG = {
-  leafSpacing: 50,
-  levelHeight: 56,
-  paddingX: 30,
-  paddingY: 30,
-  fontSize: 15,
+  leafSpacing: 48,
+  levelHeight: 50,
+  paddingX: 24,
+  paddingY: 20,
+  fontSize: 14,
 };
 
 function layoutTree(node, depth, leafCounter) {
