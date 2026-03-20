@@ -8,16 +8,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Running
 
-Open `prove_it_scoreboard.html` directly in a browser. No build step, package manager, or dependencies exist. To serve locally:
+Open `index.html` directly in a browser. No build step, package manager, or dependencies exist. To serve locally:
 
 ```
 python -m http.server 8000
-# then visit http://localhost:8000/prove_it_scoreboard.html
+# then visit http://localhost:8000
 ```
 
 ## Architecture
 
-The entire app lives in `prove_it_scoreboard.html` (HTML + embedded CSS + embedded JS). There is no build system, no framework, and no tests.
+The entire app lives in `index.html` (HTML + embedded CSS + embedded JS). There is no build system, no framework, and no tests.
 
 **Layout**: Split panel — left column (35%) shows an inline SVG mountain with climbing path, camp markers, and climber figures; right column (65%) shows the active stage interaction panel.
 
